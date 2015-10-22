@@ -19,12 +19,6 @@ wq.data <- wq.data %>%
   mutate(pred.growth = sturgrow(Temp, Sal, DO.pct),
          Date = lubridate::mdy(Date))
 
-
-ggplot() +
-  geom_polygon(data = marnan.df, aes(x = long, y = lat, group = group)) +
-  geom_point(data = wq.data, aes(x = DD.Long, y = DD.Lat), color = 'red') +
-  facet_wrap(~ Date)
-
 WQplot <- function(var, type = 'B', system = 'all'){
   title.type <- switch(type,
                        B = 'Bottom',
@@ -57,10 +51,11 @@ WQplot <- function(var, type = 'B', system = 'all'){
                    all = wq.data,
                    nan = filter(wq.data, grepl('Nan', Site.ID)),
                    mar = filter(wq.data, grepl('Mar', Site.ID)))
+  system.dat$plot.var <- system.dat[, var]
 
   ggplot(environment = environment()) +
   geom_point(data = filter(system.dat, Type == type),
-             aes(x = DD.Long, y = DD.Lat, color = pred.growth,
+             aes(x = DD.Long, y = DD.Lat, color = plot.var,
                  size = Detections),
                  environment = environment())+
   facet_wrap(~ Date, ncol = 2) +
@@ -78,4 +73,4 @@ WQplot <- function(var, type = 'B', system = 'all'){
        color = legend.print)
 }
 
-WQplot('pred.growth')
+WQplot('DO.pct')
