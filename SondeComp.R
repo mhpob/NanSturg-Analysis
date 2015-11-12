@@ -12,7 +12,7 @@ sonde <- reshape2::melt(sonde, id.vars = c('Date.Time', 'Station'),
                                          'DO.mg_l', 'pred.growth'),
                         na.rm = T)
 
-test <- sonde %>%
+sonde <- sonde %>%
   filter(variable %in% c('Temp', 'Sal', 'pH', 'DO.pct', 'pred.growth')) %>%
   mutate(Date.Time = lubridate::mdy_hms(Date.Time),
          Date = lubridate::floor_date(Date.Time, 'day')) %>%
@@ -21,21 +21,18 @@ test <- sonde %>%
             min = min(value),
             max = max(value))
 
-ggplot() + geom_ribbon(data = test,
-                       aes(x = Date, ymin = min, ymax = max,
-                           fill = Station), alpha = 0.5) +
-  geom_line(data = test, aes(x = Date, y = mean, color = Station)) +
+# Ribbon min/mean/max
+ggplot(data = sonde) +
+  geom_ribbon(aes(x = Date, ymin = min, ymax = max,
+                  fill = Station), alpha = 0.5) +
+  geom_line(aes(x = Date, y = mean, color = Station)) +
   facet_wrap(~variable, scales = 'free_y')
 
-
-test <- reshape2::melt(test, id.vars = c('Date', 'Station', 'variable'),
-                       measure.vars = c('mean', 'min', 'max'),
-                       variable.name = 'Type')
-
-
-
-ggplot() + geom_line(data = test, aes(x = Date, y = value, color = Station,
-                                      linetype = Type)) +
+# Line min/mean/max
+ggplot(data = sonde) +
+  geom_line(aes(x = Date, y = min, color = Station), linetype = 'dotted') +
+  geom_line(aes(x = Date, y = mean, color = Station), linetype ='solid') +
+  geom_line(aes(x = Date, y = max, color = Station), linetype = 'dotted') +
   facet_wrap(~variable, scales = 'free_y')
 
 
