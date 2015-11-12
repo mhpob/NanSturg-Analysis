@@ -2,7 +2,7 @@ library(ggplot2); library(dplyr)
 # Marshyhope is closest to M14, Ferry is closest to ND5
 
 sonde <- 'p:/obrien/biotelemetry/nanticoke/dnrec sonde/'
-sonde <- paste0(sonde, list.files(path = sonde))
+sonde <- paste0(sonde, list.files(path = sonde, pattern = '*.csv'))
 sonde <- lapply(sonde, FUN = read.csv, stringsAsFactors = F)
 sonde <- do.call(rbind.data.frame, sonde)
 names(sonde) <- c('Date.Time', 'Temp', 'Cond', 'Sal', 'pH', 'pH.mv', 'DO.pct',
