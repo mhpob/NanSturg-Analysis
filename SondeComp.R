@@ -36,3 +36,16 @@ ggplot(data = sonde) +
   facet_wrap(~variable, scales = 'free_y')
 
 
+# Plot station vs station
+SvS <- reshape2::melt(sonde, id.vars = c('Date', 'Station', 'variable'),
+                       measure.vars = c('mean', 'min', 'max'),
+                       variable.name = 'Type')
+SvS <- reshape2::dcast(SvS, Date + variable + Type ~ Station,
+                       value.var = 'value')
+
+ggplot(data = SvS, aes(x = Ferry, y = Marshyhope, color = Type)) +
+  geom_point() +
+  stat_smooth(method = 'lm', se = F) +
+  facet_wrap(~variable, scales = 'free')
+
+
