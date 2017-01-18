@@ -1,11 +1,9 @@
 library(ggplot2); library(dplyr)
 
-sonde <- 'p:/obrien/biotelemetry/nanticoke/dnrec sonde/'
-sonde <- paste0(sonde, list.files(path = sonde, pattern = '*.csv'))
-sonde <- lapply(sonde, FUN = read.csv, stringsAsFactors = F)
-sonde <- do.call(rbind.data.frame, sonde)
+sonde <- read.csv('p:/obrien/biotelemetry/nanticoke/dnrec sonde/all_2015.csv',
+                  stringsAsFactors = F)
 names(sonde) <- c('Date.Time', 'Temp', 'Cond', 'Sal', 'pH', 'pH.mv', 'DO.pct',
-                  'DO.mg_l', 'Batt', 'Station', 'Lat', 'Long')
+                  'DO.mg_l', 'Batt', 'Station')
 sonde$pred.growth <- TelemetryR::sturgrow(sonde$Temp, sonde$Sal, sonde$DO.pct)
 sonde <- reshape2::melt(sonde, id.vars = c('Date.Time', 'Station'),
                         measure.vars = c('Temp', 'Cond', 'Sal', 'pH', 'DO.pct',
