@@ -74,3 +74,19 @@ WQplot <- function(var, type = 'B', system = 'all'){
 }
 
 WQplot('DO.pct')
+
+
+circles <- ptcirc(wq.data %>% distinct(Site.ID) %>%
+                    select(DD.Long, DD.Lat), 800)
+ggplot() +
+  geom_point(aes(x = c(-75.814226, -75.810498), y = c(38.647510, 38.643767)),
+             color = 'red', size = 4) +
+  geom_point(data = distinct(wq.data, Site.ID),
+             aes(x = DD.Long, y = DD.Lat)) +
+  geom_path(data = circles,
+             aes(x = long, y = lat, group = circle)) +
+  geom_polygon(data = marnan.df,
+                     aes(x = long, y = lat, group = group),
+                     fill = 'lightgray', color = 'black', alpha = 0.3) +
+  theme_bw() +
+  labs(x = 'Longitude', y = 'Latitude')
