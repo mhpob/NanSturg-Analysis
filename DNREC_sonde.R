@@ -1,13 +1,11 @@
 library(ggplot2); library(dplyr)
-# Marshyhope is closest to M14, Ferry is closest to ND5
+# Marshyhope is closest to M14, Ferry is closest to ND5, Hatchery ND3
 
-sonde <- 'p:/obrien/biotelemetry/nanticoke/dnrec sonde/'
-sonde <- paste0(sonde, list.files(path = sonde, pattern = '*.csv'))
-sonde <- lapply(sonde, FUN = read.csv, stringsAsFactors = F)
-sonde <- do.call(rbind.data.frame, sonde)
+sonde <- read.csv('p:/obrien/biotelemetry/nanticoke/dnrec sonde/all_2015.csv',
+                  stringsAsFactors = F)
 names(sonde) <- c('Date.Time', 'Temp', 'Cond', 'Sal', 'pH', 'pH.mv', 'DO.pct',
-                  'DO.mg_l', 'Batt', 'Station', 'Lat', 'Long')
-sonde$Date.Time <- lubridate::mdy_hms(sonde$Date.Time)
+                  'DO.mg_l', 'Batt', 'Station')
+sonde$Date.Time <- lubridate::ymd_hms(sonde$Date.Time)
 
 cruise <- read.csv('p:/obrien/biotelemetry/nanticoke/marshnan_data.csv')
 cruise <- cruise %>%
@@ -29,19 +27,22 @@ sondeplot <- function(var, type = 'B', site = 'marshy'){
   title.site <- switch(site,
                        marshy = ', Marshyhope Sonde',
                        ferry = ', Woodland Ferry',
-                       draw = ', Seaford Drawbridge')
+                       draw = ', Seaford Drawbridge',
+                       hatch = ', Hatchery')
   title.print <- paste0(title.type, title.var, title.site)
 
   sonde.dat <- switch(site,
                    marshy = filter(sonde, grepl('Mar', Station)),
                    ferry = filter(sonde, grepl('Fer', Station)),
-                   draw = filter(sonde, grepl('Draw', Station)))
+                   draw = filter(sonde, grepl('Draw', Station)),
+                   hatch = filter(sonde, grepl('Hatch', Station)))
   sonde.dat$plot.var <- sonde.dat[, var]
 
   cruise.dat <- switch(site,
                        marshy = filter(cruise, Site.ID == 'M14', Type == type),
                        ferry = filter(cruise, Site.ID == 'ND5', Type == type),
-                       draw = filter(cruise, Site.ID == 'ND9', Type == type))
+                       draw = filter(cruise, Site.ID == 'ND9', Type == type),
+                       hatch = filter(cruise, Site.ID == 'ND3', Type == type))
   cruise.dat$plot.var <- cruise.dat[, var]
 
 
@@ -54,7 +55,7 @@ sondeplot <- function(var, type = 'B', site = 'marshy'){
     labs(x = 'Date', y = title.var, title = title.print)
 }
 
-sondeplot('DO.mg_l', type = 'B', site = 'marshy')
+sondeplot('Sal', type = 'B', site = 'hatch')
 
 
 
@@ -77,18 +78,21 @@ allplot <- function(type = 'B', site = 'marshy'){
   title.site <- switch(site,
                        marshy = ', Marshyhope Sonde',
                        ferry = ', Woodland Ferry',
-                       draw = ', Seaford Drawbridge')
+                       draw = ', Seaford Drawbridge',
+                       hatch = ', Hatchery')
   title.print <- paste0(title.type, title.site)
 
   sonde.dat <- switch(site,
                       marshy = filter(sonde.long, grepl('Mar', Station)),
                       ferry = filter(sonde.long, grepl('Fer', Station)),
-                      draw = filter(sonde.long, grepl('Draw', Station)))
+                      draw = filter(sonde.long, grepl('Draw', Station)),
+                      hatch = filter(sonde.long, grepl('Hatch', Station)))
 
   cruise.dat <- switch(site,
                  marshy = filter(cruise.long, Site.ID == 'M14', Type == type),
                  ferry = filter(cruise.long, Site.ID == 'ND5', Type == type),
-                 draw = filter(cruise.long, Site.ID == 'ND9', Type == type))
+                 draw = filter(cruise.long, Site.ID == 'ND9', Type == type),
+                 hatch = filter(cruise.long, Site.ID == 'ND3', Type == type))
 
   ggplot() + geom_line(data = sonde.dat,
                      aes(x = Date.Time, y = value)) +
@@ -99,4 +103,4 @@ allplot <- function(type = 'B', site = 'marshy'){
     labs(x = 'Date', y = 'Value', title = title.print)
 }
 
-allplot(site = 'marshy')
+allplot(site = 'hatch')
