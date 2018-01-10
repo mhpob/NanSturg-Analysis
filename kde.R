@@ -1,4 +1,6 @@
 library(ggplot2); library(rgdal); library(ks); library(dplyr)
+
+# Import sturgeon positions ----
 pos <- read.csv('p:/obrien/biotelemetry/nanticoke/vps results/positions/all-calc-positions.csv',
               stringsAsFactors = F)
 pos <- pos[grepl('^\\d', pos$TRANSMITTER),]
@@ -6,7 +8,7 @@ pos$DATETIME <- lubridate::ymd_hms(pos$DATETIME)
 pos$wk <- lubridate::floor_date(pos$DATETIME, 'week')
 
 
-# Calculate kernel density estimate (KDE).
+# Calculate kernel density estimate (KDE) ----
 ## lapply with break if Hpi doesn't converge. Use tryCatch to set failures as
 ##   NULL and move on to next set of detections.
 pos.list <- split(as.data.frame(pos[, c('LON','LAT')]),
@@ -28,7 +30,7 @@ pos.kde <- lapply(X = names(pos.list),
                                         H = pos.bandw[[i]])})
 names(pos.kde) <- names(pos.list)
 
-# Plotting
+# Prepare KDE for plotting ----
 # Create a list (transmitters) of lists (Contour groups)
 temporary.contour.function <- function(i, cont.level){
   contourLines(x = pos.kde[[i]]$eval.points[[1]],
@@ -57,7 +59,7 @@ kde.plot$contour <- unlist(lapply(strsplit(row.names(kde.plot), "[.]"),
 kde.plot$contour <- paste(kde.plot$transmitter, kde.plot$contour, sep = ':')
 row.names(kde.plot) <- NULL
 
-# Shapefiles ----
+# Prepare shapefiles for plotting ----
 # General Marsyhope
 # marnan <- readOGR('c:/users/secor/desktop/gis products/nanticoke2015',
 #                   'MarshNan')
@@ -69,21 +71,28 @@ row.names(kde.plot) <- NULL
 # mar.plot <- filter(marnan.df, grepl('Mar', group))
 
 # Habitat
-habitat <- readOGR(dsn ='C:/Users/secor/Downloads/2015 Atlantic Sturgeon Habitat Geodatabase and Report Nanticoke and Tributaries-2016-01-19/2015 Atlantic Sturgeon Habitat Geodatabase Nanticoke and Tributaries 01132016.gdb')
+habitat <- readOGR(dsn ='C:/Users/secor/Downloads/2015 Atlantic Sturgeon Habitat Geodatabase and Report Nanticoke and Tributaries-2016-01-19/2015 Atlantic Sturgeon Habitat Geodatabase Nanticoke and Tributaries 01132016.gdb',
+                   layer = 'RiverBed_Habitat_Polygons_CMECS_SC_01132016')
+
+# Select polygons in the Marshyhope
 habitat <- habitat[habitat$Location == 'Marshyhope Creek, MD',]
 
-hab.data <- habitat@data
-hab.data$OBJECTID <- as.character(hab.data$OBJECTID)
-hab.data$SubGroup <- ifelse(hab.data$SubGroup == '<Null>', '',
-                            levels(hab.data$SubGroup)[hab.data$SubGroup])
-
+# Reproject to lonlat
 habitat <- spTransform(habitat, CRS = CRS('+proj=longlat +zone=18 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'))
 
-hab.df <- fortify(habitat, region = 'OBJECTID')
 
-hab.df <- left_join(hab.df, hab.data, by = c('id' = 'OBJECTID'))
+# Slight manipulation of underlying data
+habitat@data$OBJECTID <- as.character(habitat@data$OBJECTID)
+habitat@data$SubGroup <- ifelse(habitat@data$SubGroup == '<Null>', '',
+                                levels(habitat@data$SubGroup)[habitat@data$SubGroup])
+
+# Fortify for use in ggplot
+hab.df <- fortify(habitat, region = 'OBJECTID')
+# Bring back in other data
+hab.df <- left_join(hab.df, habitat@data, by = c('id' = 'OBJECTID'))
 
 # Pick only habitat polygons that are within the area of interest
+# Not necessary, but removing the other bottom types makes the legend pretty
 trim <- filter(hab.df,
                long >= -75.8145,
                long <= -75.8095,
@@ -91,7 +100,7 @@ trim <- filter(hab.df,
                lat <= 38.649)
 hab.df <- filter(hab.df, id %in% unique(trim$id))
 
-library(ggplot2)
+# Plotting ----
 ggplot() +
   geom_polygon(data = hab.df, aes(x = long, y = lat, group = group,
                                   fill = interaction(Group_, SubGroup))) +
