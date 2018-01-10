@@ -1,11 +1,12 @@
 library(TelemetryR);library(ggplot2); library(lubridate); library(dplyr)
 
-dnr_trans <- c(23900, 23901, 23902, 23903, 23904,
+dnr_trans <- c(21063, 21064, 21065, 21066, 21067,
+               23900, 23901, 23902, 23903, 23904,
                26350, 26351, 26352, 26353, 26354,
                27543, 27544, 27545, 27546, 27547)
 
-dnr_det <- c('p:/obrien/biotelemetry/detections/dnr/marshyhope',
-             'p:/obrien/biotelemetry/detections/dnr/nanticoke')
+dnr_det <- c('p:/obrien/biotelemetry/detections',
+             'p:/obrien/biotelemetry/nanticoke/dnr recieved detections')
 dnr_det <- lapply(dnr_det, vemsort)
 dnr_det <- do.call(rbind, dnr_det)
 dnr_det <- filter(dnr_det, trans.num %in% dnr_trans)
