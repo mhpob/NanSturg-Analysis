@@ -1,4 +1,4 @@
-library(ggplot2); library(dplyr); library(rgdal)
+library(ggplot2); library(dplyr); library(sf)
 
 # Import positions ----
 all_pos <- read.csv('p:/obrien/biotelemetry/nanticoke/vps results/positions/all-calc-positions.csv',
@@ -17,35 +17,19 @@ rec_pos <- readxl::read_excel(
   filter(Args == 'Derived')
 
 # Import bottom type polygons ----
-habitat <- readOGR(dsn ='C:/Users/secor/Downloads/2015 Atlantic Sturgeon Habitat Geodatabase and Report Nanticoke and Tributaries-2016-01-19/2015 Atlantic Sturgeon Habitat Geodatabase Nanticoke and Tributaries 01132016.gdb',
+habitat <- st_read(dsn ='C:/Users/secor/Downloads/2015 Atlantic Sturgeon Habitat Geodatabase and Report Nanticoke and Tributaries-2016-01-19/2015 Atlantic Sturgeon Habitat Geodatabase Nanticoke and Tributaries 01132016.gdb',
                    layer = 'RiverBed_Habitat_Polygons_CMECS_SC_01132016')
 
-# Select polygons in the Marshyhope
-habitat <- habitat[habitat$Location == 'Marshyhope Creek, MD',]
-
-# Reproject to lonlat
-habitat <- spTransform(habitat, CRS = CRS('+proj=longlat +zone=18 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'))
-
-
-# Slight manipulation of underlying data
-habitat@data$OBJECTID <- as.character(habitat@data$OBJECTID)
-habitat@data$SubGroup <- ifelse(habitat@data$SubGroup == '<Null>', '',
-                           levels(habitat@data$SubGroup)[habitat@data$SubGroup])
-
-# Prepare to plot ----
-hab.df <- fortify(habitat, region = 'OBJECTID')
-# Bring back in other data
-hab.df <- left_join(hab.df, habitat@data, by = c('id' = 'OBJECTID'))
-
-# Pick only habitat polygons that are within the area of interest
-# Not necessary, but removing the other bottom types makes the legend pretty
-trim <- filter(hab.df,
-            long >= -75.8145,
-            long <= -75.8095,
-            lat >= 38.6415,
-            lat <= 38.649)
-hab.df <- filter(hab.df, id %in% unique(trim$id))
-
+habitat <- habitat %>%
+  # Select polygons in the Marshyhope
+  filter(Location == 'Marshyhope Creek, MD') %>%
+  # Slight manipulation of underlying data
+  mutate(OBJECTID = as.character(OBJECTID),
+         SubGroup = case_when(SubGroup == '<Null>' ~ '',
+                              T ~ as.character(SubGroup))) %>%
+  # Reproject to lonlat
+  st_transform('+proj=longlat +zone=18 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs') %>%
+  st_crop(xmin = -75.8145, xmax = -75.8095, ymin = 38.6415, ymax = 38.649)
 
 # Plot ----
 ggplot() +
@@ -60,5 +44,20 @@ ggplot() +
   geom_point(data = rec_pos, aes(x = Longitude, y = Latitude),
              pch = 24, lwd = 2, fill = 'green') +
   labs(x = 'Latitude', y = 'Longitude', fill = 'Bottom Type') +
+  theme_bw() +
+  theme(legend.justification = c(0,0), legend.position = c(0.05,0.05))
+
+
+ggplot() +
+  geom_sf(data = habitat, aes(fill = interaction(Group_, SubGroup)),
+          color = 'black') +
+  scale_fill_manual(values = c('orange1', 'orangered', 'yellow', 'lightblue', 'blue'),
+                    labels = c('Mud', 'Muddy Sand', 'Sand', 'Gravelly Sand',
+                               'Sandy Gravel')) +
+  coord_sf(xlim = c(-75.8145, -75.8095), ylim = c(38.6415, 38.649)) +
+  geom_point(data = fish_pos, aes(x = lon, y = lat), alpha = 0.2) +
+  geom_point(data = rec_pos, aes(x = Longitude, y = Latitude),
+             pch = 24, lwd = 2, fill = 'green') +
+  labs(x = NULL, y = NULL, fill = 'Bottom Type') +
   theme_bw() +
   theme(legend.justification = c(0,0), legend.position = c(0.05,0.05))
