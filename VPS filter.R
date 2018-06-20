@@ -1,34 +1,34 @@
-files <- list.files(path = 'p:/obrien/biotelemetry/nanticoke/vps data', pattern = '*.csv',
-                    full.names = T,recursive = T)
-j <- lapply(files, read.csv, stringsAsFactors = F)
-j <- do.call(rbind, j)
+library(TelemetryR)
+j <- vemsort('p:/obrien/biotelemetry/nanticoke/vps data/receiver')
+
+
 library(dplyr); library(lubridate)
 
 j <- j %>%
-  mutate(date = ymd_hms(ï..Date.and.Time..UTC.)) %>%
+  mutate(date = ymd_hms(date.local)) %>%
   filter(date > ymd('2017-08-30'),
          date < ymd('2017-10-04'))
 
 
-WT <- filter(j, grepl(16250, Transmitter),
-             grepl(124474, Receiver)) %>%
-  mutate(WT = 0.1569 * Sensor.Value - 5,
-         floor = floor_date(date, unit = 'week'))
-%>%
+WT <- filter(j, grepl(16250, transmitter),
+             grepl(124474, receiver)) %>%
+  mutate(WT = 0.1569 * sensor.value - 5,
+         floor = floor_date(date, unit = 'hour')) %>%
   group_by(floor) %>%
   summarize(mean = mean(WT),
             sd = sd(WT))
-# k <- filter(j, !grepl('16250|65003|65004|65005|65006|65007|65008|65010|65011|65012|
-#                       |65013|65014|65015', Transmitter)) %>%
-#   group_by(Transmitter) %>%
-#   summarize(n())
+k <- filter(j, !grepl('16250|65003|65004|65005|65006|65007|65008|65010|65011|65012|
+                      |65013|65014|65015', transmitter)) %>%
+  group_by(transmitter) %>%
+  summarize(n())
 
 l <- filter(j, grepl(paste(c(seq(27543, 27547, 1), seq(26350, 26354, 1),
                          seq(23900, 23904, 1), seq(21063, 21072, 1)),
                          collapse = '|'),
-                     Transmitter))
+                     transmitter))
 m <- mutate(l, floor = floor_date(date, unit = 'hour'),
             hrs = hour(date))%>%
+  distinct(transmitter, floor) %>%
   group_by(floor) %>%
   summarize(n = n())
 
@@ -36,7 +36,7 @@ library(ggplot2)
 ggplot() + geom_line(data = WT, aes(floor, mean)) +
   ylim(c(16, 25.5)) +
   scale_x_datetime(limits = c(as.POSIXct('2017-08-30'),as.POSIXct('2017-10-04'))) +
-  labs(x = 'Date', y = 'Water Temperature') +
+  labs(x = '', y = 'Water Temperature') +
   theme_bw()
 
 ggplot() + geom_col(data = m, aes(x = floor, y = n))+
