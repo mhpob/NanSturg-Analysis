@@ -1,0 +1,219 @@
+library(lubridate); library(dplyr)
+
+
+sharp <- read.csv('p:/obrien/biotelemetry/nanticoke/tidesunmoon.csv',
+                  stringsAsFactors = F) %>%
+  mutate(time = lubridate::ymd_hms(time))
+
+dnr <- read.csv('p:/obrien/biotelemetry/nanticoke/dnrec sonde/dnr_2017.csv') %>%
+  mutate(Date = lubridate::ymd(Date))
+names(dnr) <- c('time', 'temp', 'ph', 'do', 'turb')
+dnr <- reshape2::melt(dnr, id.vars = 'time',
+                      variable.name = 'var', value.name = 'val')
+
+env <- rbind(sharp, dnr)
+
+env <- env %>%
+  filter(time > '2017-08-27',
+         time < '2017-09-25')
+
+fish_pos <- read.csv(
+  'p:/obrien/biotelemetry/nanticoke/vps results/positions/all-calc-positions.csv',
+  stringsAsFactors = F) %>%
+  rename_all(tolower) %>%
+  filter(grepl('^\\d', transmitter)) %>%
+  mutate(datetime = lubridate::ymd_hms(datetime),
+         datefloor = lubridate::floor_date(datetime, '6hour'))
+
+pdat <- fish_pos%>%
+  distinct(datefloor, transmitter) %>%
+  group_by(datefloor)%>%
+  summarize(n())
+
+pdat2 <- env %>%
+  filter(var == 'sun') %>%
+  mutate(datefloor = lubridate::floor_date(time, 'day'),
+         datefloor = case_when(val == 'set' ~ datefloor + days(1),
+                               T ~ datefloor)) %>%
+  reshape2::dcast(datefloor ~ val, value.var = 'time')
+
+
+library(ggplot2)
+ggplot() + geom_rect(data = pdat2, aes(xmin = as.POSIXct(rise, origin="1970-01-01"),
+                                       xmax = as.POSIXct(set, origin="1970-01-01"),
+                                       ymin = 0, ymax = Inf), fill = 'lightgray') +
+  geom_col(data = pdat, aes(x = datefloor, y = `n()`)) +
+  labs(x = NULL, y = 'Fish Detected/6hr') +
+  theme_bw()
+
+
+
+
+habitat <- sf::read_sf(dsn ='C:/Users/secor/Downloads/2015 Atlantic Sturgeon Habitat Geodatabase and Report Nanticoke and Tributaries-2016-01-19/2015 Atlantic Sturgeon Habitat Geodatabase Nanticoke and Tributaries 01132016.gdb',
+                   layer = 'RiverBed_Habitat_Polygons_CMECS_SC_01132016') %>%
+  filter(Location == 'Marshyhope Creek, MD') %>%
+  mutate(sed_type = case_when(SubGroup == '<Null>' ~ Group_,
+                              T ~ SubGroup)) %>%
+  # Reproject from UTM to longlat (epsg = 4326)
+  sf::st_transform(4326)
+
+
+# Load position data
+fish_pos <- read.csv(
+  'p:/obrien/biotelemetry/nanticoke/vps results/positions/all-calc-positions.csv',
+  stringsAsFactors = F) %>%
+  rename_all(tolower) %>%
+  filter(grepl('^\\d', transmitter)) %>%
+  mutate(datetime = lubridate::ymd_hms(datetime),
+         datefloor = lubridate::floor_date(datetime, '6hour')) %>%
+  sf::st_as_sf(coords = c('lon', 'lat'), crs = 4326) %>%
+  sf::st_join(habitat, join = sf::st_intersects)
+
+
+pdat <- data.frame(fish_pos) %>%
+  # distinct(datefloor, transmitter, sed_type) %>%
+  group_by(datefloor, sed_type) %>%
+  summarize(n())
+
+ggplot() + geom_rect(data = pdat2, aes(xmin = as.POSIXct(rise, origin="1970-01-01"),
+                                       xmax = as.POSIXct(set, origin="1970-01-01"),
+                                       ymin = 0, ymax = Inf), fill = 'lightgray') +
+  geom_col(data = pdat, aes(x = datefloor, y = `n()`, fill = sed_type)) +
+  scale_fill_manual(values = c('orange1', 'orangered', 'yellow', 'blue')) +
+  labs(x = NULL, y = 'Detections/6hr', fill = NULL) +
+  theme_bw()
+
+pdat2 <- env %>%
+  filter(var == 'sun',
+         time < '2017-09-25') %>%
+  mutate(datefloor = lubridate::floor_date(time, 'day'),
+         datefloor = case_when(val == 'set' ~ datefloor + days(1),
+                               T ~ datefloor)) %>%
+  reshape2::dcast(datefloor ~ val, value.var = 'time')
+
+
+library(ggplot2)
+ggplot() + geom_rect(data = pdat2, aes(xmin = as.POSIXct(rise, origin="1970-01-01"),
+                                       xmax = as.POSIXct(set, origin="1970-01-01"),
+                                       ymin = 0, ymax = Inf), fill = 'lightgray') +
+  geom_col(data = pdat, aes(x = datefloor, y = `n()`)) +
+  labs(x = NULL, y = 'Detections/6hr') +
+  theme_bw()
+
+
+
+pdat <- data.frame(fish_pos)%>%
+  distinct(datefloor, transmitter) %>%
+  group_by(datefloor)%>%
+  summarize(n())
+
+pdat3 <- env %>%
+  filter(var == 'tide',
+         time < '2017-09-25') %>%
+  mutate(ind = c(rep(seq(1, 56, 1), each = 2), 57))%>%
+  reshape2::dcast(ind ~ val, value.var = 'time')
+
+ggplot() + geom_rect(data = pdat3, aes(xmin = as.POSIXct(Low, origin="1970-01-01"),
+                                       xmax = as.POSIXct(High, origin="1970-01-01"),
+                                       ymin = 0, ymax = Inf), fill = 'lightgray') +
+  geom_col(data = pdat, aes(x = datefloor, y = `n()`)) +
+  labs(x = NULL, y = 'Fish Detected/6hr') +
+  theme_bw()
+
+pdat <- data.frame(fish_pos) %>%
+  distinct(datefloor, transmitter, sed_type) %>%
+  group_by(datefloor, sed_type) %>%
+  summarize(n())
+ggplot() + geom_rect(data = pdat3, aes(xmin = as.POSIXct(Low, origin="1970-01-01"),
+                                       xmax = as.POSIXct(High, origin="1970-01-01"),
+                                       ymin = 0, ymax = Inf), fill = 'lightgray') +
+  geom_col(data = pdat, aes(x = datefloor, y = `n()`, fill = sed_type)) +
+  scale_fill_manual(values = c('orange1', 'orangered', 'yellow', 'blue')) +
+  labs(x = NULL, y = 'Detections/6hr', fill = NULL) +
+  theme_bw()
+
+
+
+
+# Start anew------
+library(lubridate); library(dplyr)
+
+
+sharp <- read.csv('p:/obrien/biotelemetry/nanticoke/tidesunmoon.csv',
+                  stringsAsFactors = F) %>%
+  mutate(time = lubridate::ymd_hms(time))
+
+dnr <- read.csv('p:/obrien/biotelemetry/nanticoke/dnrec sonde/dnr_2017.csv') %>%
+  mutate(Date = lubridate::ymd(Date))
+names(dnr) <- c('time', 'temp', 'ph', 'do', 'turb')
+dnr <- reshape2::melt(dnr, id.vars = 'time',
+                      variable.name = 'var', value.name = 'val')
+
+env <- rbind(sharp, dnr)
+
+env <- env %>%
+  filter(time > '2017-08-27',
+         time < '2017-09-25')
+
+habitat <- sf::read_sf(dsn ='C:/Users/secor/Downloads/2015 Atlantic Sturgeon Habitat Geodatabase and Report Nanticoke and Tributaries-2016-01-19/2015 Atlantic Sturgeon Habitat Geodatabase Nanticoke and Tributaries 01132016.gdb',
+                       layer = 'RiverBed_Habitat_Polygons_CMECS_SC_01132016') %>%
+  filter(Location == 'Marshyhope Creek, MD') %>%
+  mutate(sed_type = case_when(SubGroup == '<Null>' ~ Group_,
+                              T ~ SubGroup)) %>%
+  # Reproject from UTM to longlat (epsg = 4326)
+  sf::st_transform(4326)
+
+
+# Load position data
+fish_pos <- read.csv(
+  'p:/obrien/biotelemetry/nanticoke/vps results/positions/all-calc-positions.csv',
+  stringsAsFactors = F) %>%
+  rename_all(tolower) %>%
+  filter(grepl('^\\d', transmitter)) %>%
+  mutate(datetime = lubridate::ymd_hms(datetime),
+         datefloor = lubridate::floor_date(datetime, '6hour')) %>%
+  sf::st_as_sf(coords = c('lon', 'lat'), crs = 4326) %>%
+  sf::st_join(habitat, join = sf::st_intersects)
+
+# Det/fish/6hr
+pdat <- data.frame(fish_pos) %>%
+  group_by(datefloor, transmitter) %>%
+  summarize(n())
+
+library(ggplot2)
+ggplot() + geom_boxplot(data = pdat, aes(x = datefloor, y = `n()`,
+                                         group = datefloor)) +
+  labs(x = NULL, y = 'Detections per fish per 6 hours') +
+  theme_bw()
+
+tide <- env %>%
+  filter(var == 'tide',
+         time < '2017-09-25') %>%
+  mutate(ind = c(rep(seq(1, 56, 1), each = 2), 57))%>%
+  reshape2::dcast(ind ~ val, value.var = 'time')
+
+ggplot() + geom_rect(data = tide, aes(xmin = as.POSIXct(Low, origin="1970-01-01"),
+                                       xmax = as.POSIXct(High, origin="1970-01-01"),
+                                       ymin = 0, ymax = Inf), fill = 'lightgray') +
+  geom_boxplot(data = pdat, aes(x = datefloor, y = `n()`,
+                                group = datefloor)) +
+  labs(x = NULL, y = 'Detections per fish per 6 hours') +
+  theme_bw()
+
+
+sun <- env %>%
+  filter(var == 'sun') %>%
+  mutate(datefloor = lubridate::floor_date(time, 'day'),
+         datefloor = case_when(val == 'set' ~ datefloor + days(1),
+                               T ~ datefloor)) %>%
+  reshape2::dcast(datefloor ~ val, value.var = 'time')
+
+ggplot() + geom_rect(data = sun, aes(xmin = as.POSIXct(rise, origin="1970-01-01"),
+                                       xmax = as.POSIXct(set, origin="1970-01-01"),
+                                       ymin = 0, ymax = Inf), fill = 'lightgray') +
+  geom_boxplot(data = pdat, aes(x = datefloor, y = `n()`,
+                                group = datefloor)) +
+  labs(x = NULL, y = 'Detections per fish per 6 hours') +
+  theme_bw()
+
+
