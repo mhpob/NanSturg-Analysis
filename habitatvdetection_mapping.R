@@ -8,7 +8,8 @@ all_pos <- read.csv(
   rename_all(tolower)
 
 fish_pos <- all_pos %>%
-  filter(grepl('^\\d', all_pos$transmitter)) %>%
+  filter(grepl('^\\d', all_pos$transmitter),
+         hpe <= 10) %>%
   st_as_sf(coords = c('lon', 'lat'), crs = 4326)
 
 # Import receiver positions
@@ -34,16 +35,19 @@ habitat <- habitat %>%
   st_crop(xmin = -75.8145, xmax = -75.8095, ymin = 38.6415, ymax = 38.649)
 
 # Plot ----
-ggplot() +
+base <- ggmap::get_map(location = c(-75.8145, 38.6415, -75.8095, 38.649),
+                       zoom = 16, maptype = 'satellite')
+
+ggmap::ggmap(k) +
   geom_sf(data = habitat, aes(fill = interaction(Group_, SubGroup)),
-          color = 'black') +
-  scale_fill_manual(values = c('orange1', 'orangered', 'yellow', 'lightblue', 'blue'),
+          color = 'black', inherit.aes = F) +
+  scale_fill_manual(values = c('orange1', 'orangered', 'yellow', 'lightblue',
+                               'blue'),
                     labels = c('Mud', 'Muddy Sand', 'Sand', 'Gravelly Sand',
                                'Sandy Gravel')) +
-
-  geom_sf(data = fish_pos, alpha = 0.2) +
-  geom_sf(data = rec_pos, pch = 24, lwd = 2, fill = 'green') +
-  coord_sf(xlim = c(-75.8145, -75.8095), ylim = c(38.6415, 38.649), expand = F) +
+  geom_sf(data = fish_pos, alpha = 0.5, inherit.aes = F) +
+  geom_sf(data = rec_pos, pch = 24, lwd = 2, fill = 'green', inherit.aes = F) +
+  coord_sf(xlim = c(-75.8145, -75.8095), ylim = c(38.6422, 38.6486), expand = F) +
   labs(x = NULL, y = NULL, fill = 'Bottom Type') +
   theme_bw() +
-  theme(legend.justification = c(0,0), legend.position = c(0.05,0.05))
+  theme(legend.justification = c(0,0), legend.position = c(0.05, 0.05))
