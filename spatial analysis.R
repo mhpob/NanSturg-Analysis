@@ -16,7 +16,8 @@ fish_pos <- read.csv(
   'p:/obrien/biotelemetry/nanticoke/vps results/positions/all-calc-positions.csv',
                     stringsAsFactors = F) %>%
   rename_all(tolower) %>%
-  filter(grepl('^\\d', transmitter)) %>%
+  filter(grepl('^\\d', transmitter),
+         hpe <= 10) %>%
   mutate(datetime = lubridate::ymd_hms(datetime)) %>%
   st_as_sf(coords = c('lon', 'lat'), crs = 4326)
 
