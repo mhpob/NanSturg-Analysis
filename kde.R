@@ -1,18 +1,23 @@
-library(ggplot2); library(rgdal); library(ks); library(dplyr)
+library(ggplot2); library(ks); library(dplyr); library(sf)
 
-# Import sturgeon positions ----
-pos <- read.csv('p:/obrien/biotelemetry/nanticoke/vps results/positions/all-calc-positions.csv',
-              stringsAsFactors = F)
-pos <- pos[grepl('^\\d', pos$TRANSMITTER),]
-pos$DATETIME <- lubridate::ymd_hms(pos$DATETIME)
-pos$wk <- lubridate::floor_date(pos$DATETIME, 'week')
+# Import positions ----
+all_pos <- read.csv(
+  'p:/obrien/biotelemetry/nanticoke/vps results/positions/all-calc-positions.csv',
+  stringsAsFactors = F) %>%
+  rename_all(tolower) %>%
+  mutate(datetime = lubridate::ymd_hms(datetime),
+         wk = lubridate::floor_date(datetime, 'week'))
+
+fish_pos <- all_pos %>%
+  filter(grepl('^\\d', all_pos$transmitter),
+         hpe <= 10)
 
 
 # Calculate kernel density estimate (KDE) ----
 ## lapply with break if Hpi doesn't converge. Use tryCatch to set failures as
 ##   NULL and move on to next set of detections.
-pos.list <- split(as.data.frame(pos[, c('LON','LAT')]),
-                  as.factor(pos$wk))
+pos.list <- split(as.data.frame(fish_pos[, c('lon','lat')]),
+                  as.factor(fish_pos$wk))
 
 pos.bandw <- lapply(X = pos.list, FUN = function(x){
   tryCatch(Hpi(x), error = function(e){NULL})
@@ -59,59 +64,36 @@ kde.plot$contour <- unlist(lapply(strsplit(row.names(kde.plot), "[.]"),
 kde.plot$contour <- paste(kde.plot$transmitter, kde.plot$contour, sep = ':')
 row.names(kde.plot) <- NULL
 
-# Prepare shapefiles for plotting ----
-# General Marsyhope
-# marnan <- readOGR('c:/users/secor/desktop/gis products/nanticoke2015',
-#                   'MarshNan')
-#
-# marnan <- spChFIDs(marnan, paste0(marnan@data$River, row.names(marnan)))
-#
-# marnan.df <- fortify(marnan)
-#
-# mar.plot <- filter(marnan.df, grepl('Mar', group))
 
 # Habitat
-habitat <- readOGR(dsn ='C:/Users/secor/Downloads/2015 Atlantic Sturgeon Habitat Geodatabase and Report Nanticoke and Tributaries-2016-01-19/2015 Atlantic Sturgeon Habitat Geodatabase Nanticoke and Tributaries 01132016.gdb',
+habitat <- st_read(dsn ='C:/Users/secor/Downloads/2015 Atlantic Sturgeon Habitat Geodatabase and Report Nanticoke and Tributaries-2016-01-19/2015 Atlantic Sturgeon Habitat Geodatabase Nanticoke and Tributaries 01132016.gdb',
                    layer = 'RiverBed_Habitat_Polygons_CMECS_SC_01132016')
 
 # Select polygons in the Marshyhope
-habitat <- habitat[habitat$Location == 'Marshyhope Creek, MD',]
+habitat <- habitat %>%
+  # Select polygons in the Marshyhope
+  filter(Location == 'Marshyhope Creek, MD') %>%
+  # Slight manipulation of underlying data
+  mutate(OBJECTID = as.character(OBJECTID),
+         SubGroup = case_when(SubGroup == '<Null>' ~ '',
+                              T ~ as.character(SubGroup))) %>%
+  # Reproject to lonlat
+  st_transform(4326) %>%
+  st_crop(xmin = -75.8145, xmax = -75.8095, ymin = 38.6415, ymax = 38.649)
 
-# Reproject to lonlat
-habitat <- spTransform(habitat, CRS = CRS('+proj=longlat +zone=18 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'))
-
-
-# Slight manipulation of underlying data
-habitat@data$OBJECTID <- as.character(habitat@data$OBJECTID)
-habitat@data$SubGroup <- ifelse(habitat@data$SubGroup == '<Null>', '',
-                                levels(habitat@data$SubGroup)[habitat@data$SubGroup])
-
-# Fortify for use in ggplot
-hab.df <- fortify(habitat, region = 'OBJECTID')
-# Bring back in other data
-hab.df <- left_join(hab.df, habitat@data, by = c('id' = 'OBJECTID'))
-
-# Pick only habitat polygons that are within the area of interest
-# Not necessary, but removing the other bottom types makes the legend pretty
-trim <- filter(hab.df,
-               long >= -75.8145,
-               long <= -75.8095,
-               lat >= 38.6415,
-               lat <= 38.649)
-hab.df <- filter(hab.df, id %in% unique(trim$id))
 
 # Plotting ----
 ggplot() +
-  geom_polygon(data = hab.df, aes(x = long, y = lat, group = group,
-                                  fill = interaction(Group_, SubGroup))) +
-  coord_map(xlim = c(-75.8145, -75.8095), ylim = c(38.6415, 38.649)) +
+  geom_sf(data = habitat, aes(fill = interaction(Group_, SubGroup)),
+          color = 'black') +
+  coord_sf(xlim = c(-75.8145, -75.8095), ylim = c(38.6422, 38.6486), expand = F) +
   geom_path(data = kde.plot, aes(x, y, group = contour),
             color = 'black', lwd = 1) +
   facet_wrap(~ transmitter) +
-  # scale_fill_manual(values = c('orange1', 'orangered', 'yellow',
-  #                              'lightblue', 'blue'),
-  #                   labels = c('Mud', 'Muddy Sand', 'Sand', 'Gravelly Sand',
-  #                              'Sandy Gravel')) +
+  scale_fill_manual(values = c('orange1', 'orangered', 'yellow',
+                               'lightblue', 'blue'),
+                    labels = c('Mud', 'Muddy Sand', 'Sand', 'Gravelly Sand',
+                               'Sandy Gravel')) +
   labs(x = NULL, y = NULL) +
   theme_bw() +
   theme(legend.position = 'none', axis.ticks = element_blank(),
