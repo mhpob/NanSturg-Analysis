@@ -49,6 +49,7 @@ mouths <- data.frame(body = c('Marshyhope Creek', 'Broad Creek', 'Deep Creek'),
 
 
 # Sites ----
+##DNREC
 dnrec <- read.csv('manuscript/data/detections/past receiver locations.csv') %>%
   arrange(body) %>%
   st_as_sf(coords = c('long', 'lat'),
@@ -110,3 +111,52 @@ dnrec <- dnrec %>%
   select(-geometry)
 
 write.csv(dnrec, 'manuscript/dnrec_rkm.csv', row.names = F)
+
+
+## MDNR
+dets <- data.table::fread('manuscript/data/detections/sturgeon_detections.gz')
+
+mdnr <- dets %>%
+  tibble() %>%
+  distinct(station, lat, long) %>%
+  arrange(-lat) %>%
+  st_as_sf(coords = c('long', 'lat'),
+           remove = F,
+           crs = 4326) %>%
+  st_transform(32618)
+
+
+pts <-  st_nearest_points(flowline_pts[flowline_pts$gnis_name == 'Marshyhope Creek',],
+                          mdnr) %>%
+  st_as_sf
+
+st_geometry(mdnr) <- st_geometry(pts)
+mdnr$rkm_body_mouth <- units::set_units(1, 'km')
+
+for(i in 1:nrow(mdnr)){
+  # Split flowline in half according to location of receiver
+  flowline_split <- flowline_simp %>%
+    filter(gnis_name == 'Marshyhope Creek') %>%
+    lwgeom::st_split(recs[i,]) %>%
+    st_collection_extract('LINESTRING')
+
+  # Find the length of the flowline between locations
+  lengths <- flowline_split %>%
+    st_length() %>%
+
+    # convert to KM
+    units::set_units(km) %>%
+    # Choose the down-river section (flowlines are measured from up- to down-river)
+    .[[2]]
+
+  recs[i,]$rkm_body_mouth <- lengths
+}
+
+mdnr <- mdnr %>%
+  mutate(rkm_nan_mouth = mouths[mouths$body == 'Marshyhope Creek',]$rkm_nan_mouth,
+         rkm_gross = rkm_body_mouth + units::set_units(rkm_nan_mouth, 'km'),
+         error_m = as.numeric(st_length(.))) %>%
+  tibble() %>%
+  select(-geometry, -rkm_nan_mouth)
+
+write.csv(mdnr, 'manuscript/mddnr_rkm.csv', row.names = F)
