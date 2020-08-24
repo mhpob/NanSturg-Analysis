@@ -1,7 +1,7 @@
 library(dplyr); library(sf)
 
 # Read and manipulate flowline data ---
-flowline <- st_read('manuscript/data/nanticoke_flowline.gpkg')
+flowline <- st_read('manuscript/data/spatial/nanticoke_flowline.gpkg')
 
 
 ##  Merge different within-river secctions into one.
@@ -9,10 +9,9 @@ flowline <- flowline %>%
 
   # Combine different sections into one object
   group_by(gnis_name) %>%
-  summarize(geom = st_combine(geom)) %>%
+  summarize(geom = st_combine(geom), .groups = 'keep') %>%
 
   # Merge within-object lines together
-  group_by(gnis_name) %>%
   summarize(geom = st_line_merge(geom)) %>%
   st_transform(32618)
 
@@ -41,10 +40,6 @@ nan_split <- flowline %>%
 ## Return RKMs
 mouths <- data.frame(body = c('Marshyhope Creek', 'Broad Creek', 'Deep Creek'),
                      rkm_nan_mouth = as.numeric(cumsum(nan_split)[1:3]))
-
-# Units: [km]
-# [1] 45.55766 58.47172 68.09327 80.51762
-#     Marshy,  Broad,   Deep
 
 
 
@@ -119,25 +114,31 @@ dets <- data.table::fread('manuscript/data/detections/sturgeon_detections.gz')
 mdnr <- dets %>%
   tibble() %>%
   distinct(station, lat, long) %>%
-  arrange(-lat) %>%
+  arrange(station) %>%
   st_as_sf(coords = c('long', 'lat'),
            remove = F,
            crs = 4326) %>%
   st_transform(32618)
 
 
-pts <-  st_nearest_points(flowline_pts[flowline_pts$gnis_name == 'Marshyhope Creek',],
-                          mdnr) %>%
-  st_as_sf
+mdnr <-  st_nearest_points(flowline_pts,
+                           mdnr) %>%
+  st_as_sf(station = rep(mdnr$station, times = nrow(flowline_pts)),
+           body = rep(flowline_pts$gnis_name, each = nrow(mdnr)),
+           lat = rep(mdnr$lat, times = nrow(flowline_pts)),
+           long = rep(mdnr$long, times = nrow(flowline_pts)),
+           error_m = st_length(.)) %>%
+  group_by(station) %>%
+  slice(which.min(error_m)) %>%
+  ungroup()
 
-st_geometry(mdnr) <- st_geometry(pts)
 mdnr$rkm_body_mouth <- units::set_units(1, 'km')
 
 for(i in 1:nrow(mdnr)){
   # Split flowline in half according to location of receiver
   flowline_split <- flowline_simp %>%
-    filter(gnis_name == 'Marshyhope Creek') %>%
-    lwgeom::st_split(recs[i,]) %>%
+    filter(gnis_name == mdnr[i,]$body) %>%
+    lwgeom::st_split(mdnr[i,]) %>%
     st_collection_extract('LINESTRING')
 
   # Find the length of the flowline between locations
@@ -149,14 +150,14 @@ for(i in 1:nrow(mdnr)){
     # Choose the down-river section (flowlines are measured from up- to down-river)
     .[[2]]
 
-  recs[i,]$rkm_body_mouth <- lengths
+  mdnr[i,]$rkm_body_mouth <- lengths
 }
 
 mdnr <- mdnr %>%
-  mutate(rkm_nan_mouth = mouths[mouths$body == 'Marshyhope Creek',]$rkm_nan_mouth,
-         rkm_gross = rkm_body_mouth + units::set_units(rkm_nan_mouth, 'km'),
-         error_m = as.numeric(st_length(.))) %>%
+  left_join(mouths) %>%
+  mutate(rkm_nan_mouth = ifelse(is.na(rkm_nan_mouth), 0, rkm_nan_mouth),
+         rkm_gross = as.numeric(rkm_body_mouth) + rkm_nan_mouth) %>%
   tibble() %>%
-  select(-geometry, -rkm_nan_mouth)
+  select(-x, -rkm_nan_mouth)
 
 write.csv(mdnr, 'manuscript/mddnr_rkm.csv', row.names = F)
