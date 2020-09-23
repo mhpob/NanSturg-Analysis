@@ -1,15 +1,11 @@
-library(TelemetryR); library(rgdal); library(ggplot2); library(dplyr)
+library(TelemetryR); library(sf); library(ggplot2); library(dplyr)
 
 ## Input -------------------------------------------------------------------
-marnan <- readOGR('c:/users/secor lab/desktop/gis products/nanticoke2015',
+marnan <- st_read('c:/users/secor/desktop/gis products/nanticoke2015',
                 'MarshNan')
 
-marnan <- spChFIDs(marnan, paste0(marnan@data$River, row.names(marnan)))
-
-marnan.df <- fortify(marnan)
-
-mar.plot <- filter(marnan.df, grepl('Mar', group))
-nan.plot <- filter(marnan.df, grepl('Nan', group))
+mar.plot <- filter(marnan, grepl('Mar', River))
+nan.plot <- filter(marnan, grepl('Nan', River))
 
 # Detection data
 wq.data <- read.csv('p:/obrien/biotelemetry/nanticoke/marshnan_data.csv',
@@ -43,7 +39,7 @@ WQplot <- function(var, type = 'B', system = 'all'){
                    pred.growth = 'Growth')
 
   system.plot <- switch(system,
-                        all = marnan.df,
+                        all = marnan,
                         nan = nan.plot,
                         mar = mar.plot)
 
@@ -53,11 +49,10 @@ WQplot <- function(var, type = 'B', system = 'all'){
                    mar = filter(wq.data, grepl('Mar', Site.ID)))
   system.dat$plot.var <- system.dat[, var]
 
-  ggplot(environment = environment()) +
+  ggplot() +
   geom_point(data = filter(system.dat, Type == type),
              aes(x = DD.Long, y = DD.Lat, color = plot.var,
-                 size = Detections),
-                 environment = environment())+
+                 size = Detections))+
   facet_wrap(~ Date, ncol = 2) +
   scale_color_continuous(low = 'blue', high = 'orange') +
   scale_size_manual(values = c(4, 10),
@@ -65,28 +60,25 @@ WQplot <- function(var, type = 'B', system = 'all'){
   geom_point(data = filter(system.dat, Detections != '0'),
              aes(x = DD.Long, y = DD.Lat, size = Detections),
              shape = 21, color = 'black') +
-  geom_polygon(data = system.plot,
-                     aes(x = long, y = lat, group = group),
-                     fill = 'lightgray', color = 'black', alpha = 0.3) +
+  geom_sf(data = system.plot,
+          fill = 'lightgray', color = 'black', alpha = 0.3) +
   theme_bw() +
-  labs(x = 'Longitude', y = 'Latitude', title = title.print,
+  labs(y = NULL, x = NULL, title = title.print,
        color = legend.print)
 }
 
 WQplot('DO.pct')
 
 
-circles <- ptcirc(wq.data %>% distinct(Site.ID) %>%
+circles <- ptcirc(wq.data %>% distinct(Site.ID, .keep_all = T) %>%
                     select(DD.Long, DD.Lat), 800)
 ggplot() +
-  geom_point(aes(x = c(-75.814226, -75.810498), y = c(38.647510, 38.643767)),
-             color = 'red', size = 4) +
-  geom_point(data = distinct(wq.data, Site.ID),
+  # geom_point(aes(x = c(-75.814226, -75.810498), y = c(38.647510, 38.643767)),
+  #            color = 'red', size = 4) +
+  geom_point(data = distinct(wq.data, Site.ID, .keep_all = T),
              aes(x = DD.Long, y = DD.Lat)) +
   geom_path(data = circles,
              aes(x = long, y = lat, group = circle)) +
-  geom_polygon(data = marnan.df,
-                     aes(x = long, y = lat, group = group),
-                     fill = 'lightgray', color = 'black', alpha = 0.3) +
+  geom_sf(data = marnan, fill = 'lightgray', color = 'black', alpha = 0.3) +
   theme_bw() +
-  labs(x = 'Longitude', y = 'Latitude')
+  labs(x = NULL, y = NULL)
