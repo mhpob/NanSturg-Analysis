@@ -78,7 +78,7 @@ dendr_log <- function(month){
     labs(x = NULL, y = NULL)+
     coord_trans(y = log10_p, ylim = c(1, 1e4), expand = F) +
     scale_y_continuous(breaks = 10 ^ (0:3),
-                       limits = c(1, 1e4)) +
+                       limits = c(0, 1e4)) +
     scale_x_continuous(limits = c(0, 12), expand = c(0, 0))
 
 
@@ -90,7 +90,7 @@ dendr_log <- function(month){
     labs(x = NULL, y = NULL) +
     coord_trans(y = log10_p, ylim = c(1, 1e4), expand = F) +
     scale_y_continuous(breaks = 10 ^ (0:3),
-                       limits = c(1, 1e4)) +
+                       limits = c(0, 1e4)) +
     scale_x_continuous(limits = c(0, 3), expand = c(0, 0))
 
 
