@@ -53,17 +53,20 @@ dendr_log <- function(month){
     labs(x = NULL, y = 'Detection count') +
     coord_trans(y = log10_p, ylim = c(1, 1.5e5), expand = F) +
     scale_y_continuous(breaks = 10 ^ (0:5),
-                       labels = c(10 ^ (0:4), 1e5)) +
+                       labels = c(10 ^ (0:4), 1e5),
+                       limits = c(0, 1.5e5)) +
     scale_x_continuous(limits = c(0, 75), expand = c(0, 0))
 
   marsh <- ggplot(data = test[!is.na(lat) &
-                                month(date.local) == month &
+                                month(date.local) == 5 &
                                 grepl('Marsh', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
                    breaks = seq(0, 30, 3), color = 'white') +
     labs(x = NULL, y = NULL) +
     coord_trans(y = log10_p, ylim = c(1, 6e4), expand = F) +
-    scale_y_continuous(breaks = 10 ^ (0:4))  +
+    scale_y_continuous(breaks = 10 ^ (0:4),
+                       labels = 10 ^ (0:4),
+                       limits = c(0, 6e4))  +
     scale_x_continuous(limits = c(0, 30), expand = c(0, 0))
 
 
@@ -74,7 +77,8 @@ dendr_log <- function(month){
                    breaks = seq(0, 12, 3), color = 'white') +
     labs(x = NULL, y = NULL)+
     coord_trans(y = log10_p, ylim = c(1, 1e4), expand = F) +
-    scale_y_continuous(breaks = 10 ^ (0:3)) +
+    scale_y_continuous(breaks = 10 ^ (0:3),
+                       limits = c(1, 1e4)) +
     scale_x_continuous(limits = c(0, 12), expand = c(0, 0))
 
 
@@ -85,7 +89,8 @@ dendr_log <- function(month){
                    breaks = seq(0, 3, 3), color = 'white') +
     labs(x = NULL, y = NULL) +
     coord_trans(y = log10_p, ylim = c(1, 1e4), expand = F) +
-    scale_y_continuous(breaks = 10 ^ (0:3)) +
+    scale_y_continuous(breaks = 10 ^ (0:3),
+                       limits = c(1, 1e4)) +
     scale_x_continuous(limits = c(0, 3), expand = c(0, 0))
 
 
