@@ -58,7 +58,7 @@ dendr_log <- function(month){
     scale_x_continuous(limits = c(0, 75), expand = c(0, 0))
 
   marsh <- ggplot(data = test[!is.na(lat) &
-                                month(date.local) == 5 &
+                                month(date.local) == month &
                                 grepl('Marsh', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
                    breaks = seq(0, 30, 3), color = 'white') +
