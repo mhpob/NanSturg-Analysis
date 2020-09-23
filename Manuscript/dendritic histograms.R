@@ -39,22 +39,25 @@ dendr <- function(month){
 nan <- ggplot(data = test[!is.na(lat) &
                             month(date.local) == month &
                             grepl('Nan', body),]) +
-  geom_histogram(aes(x = rkm_body_mouth)) +
+  geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
+                 breaks = seq(0, 75, 3), color = 'white') +
   labs(x = 'River kilometer', y = 'Detection count') +
   scale_x_continuous(limits = c(0, 75), expand = c(0, 0))
 
 marsh <- ggplot(data = test[!is.na(lat) &
                               month(date.local) == month &
                               grepl('Marsh', body),]) +
-  geom_histogram(aes(x = rkm_body_mouth)) +
+  geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
+                 breaks = seq(0, 30, 3), color = 'white') +
   labs(x = NULL, y = NULL)+
-  scale_x_continuous(limits = c(0, 29), expand = c(0, 0))
+  scale_x_continuous(limits = c(0, 30), expand = c(0, 0))
 
 
 broad <- ggplot(data = test[!is.na(lat) &
                               month(date.local) == month &
                               grepl('Broad', body),]) +
-  geom_histogram(aes(x = rkm_body_mouth)) +
+  geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
+                 breaks = seq(0, 12, 3), color = 'white') +
   labs(x = NULL, y = NULL)+
   scale_x_continuous(limits = c(0, 12), expand = c(0, 0))
 
@@ -62,7 +65,8 @@ broad <- ggplot(data = test[!is.na(lat) &
 deep <- ggplot(data = test[!is.na(lat) &
                              month(date.local) == month &
                              grepl('Deep', body),]) +
-  geom_histogram(aes(x = rkm_body_mouth)) +
+  geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
+                 breaks = seq(0, 3, 3), color = 'white') +
   labs(x = NULL, y = NULL) +
   scale_x_continuous(limits = c(0, 3), expand = c(0, 0))
 
@@ -78,7 +82,7 @@ design <- c(
 marsh + nan + broad + deep + plot_layout(design = design) +
   plot_annotation(title = month.name[month],
                   theme = theme(plot.title = element_text(size = 18))) &
-  theme_minimal()
+  theme_bw()
 }
 
-dendr(11)
+dendr(9)
