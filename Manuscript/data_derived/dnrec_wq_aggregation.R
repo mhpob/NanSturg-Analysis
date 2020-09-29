@@ -1,6 +1,6 @@
 library(readxl); library(data.table)
 
-files <- list.files('manuscript/data', pattern = '.xl', full.names = T)
+files <- list.files('manuscript/data', pattern = 'dnrec.xl', full.names = T)
 
 # See what the sheet names are
 lapply(files, excel_sheets)
