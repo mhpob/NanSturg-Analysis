@@ -13,4 +13,12 @@ vignettes/*.html
 vignettes/*.pdf
 .Rproj.user
 
+# Data
 /manuscript/data/
+*.csv
+*.gz
+*.gpkg
+
+# MS drafts, etc.
+*.docx
+*.pptx
