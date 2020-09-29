@@ -44,11 +44,9 @@ test <- test[!is.na(body)]
 
 
 test <- unique(test, by = c('body', 'transmitter', 'date', 'year'))
-# test <- test[, ':='(body = factor(body, ordered = T,
-#                                   levels = c('Deep Creek', 'Broad Creek',
-#                                              'Marshyhope Creek', 'Nanticoke River')),
-#                     year = factor(year, ordered = T,
-#                                   levels = c(2018, 2017, 2016, 2015, 2014)))]
+test <- test[, body := factor(body, ordered = T,
+                              levels = c('Nanticoke River', 'Marshyhope Creek',
+                                         'Broad Creek', 'Deep Creek'))]
 
 pts <- test[, .(min(date),
          max(date)), by = c('transmitter', 'year', 'body')][
@@ -59,7 +57,7 @@ pts <- melt(pts, c('year', 'body'),
 pts <- pts[, dummy.date := (value - 1) + as.Date('2014-01-01')]
 
 library(ggplot2)
-ggplot() +
+fish <- ggplot() +
   geom_linerange(data = test,
                  aes(y = dummy.date, x = body,
                       color = year),
@@ -67,19 +65,59 @@ ggplot() +
                   fun.min = 'min',
                   fun.max = 'max',
                   # Negative dodge properly orders the years
-                  position = position_dodge(-0.3),
+                  position = position_dodge(-0.75),
                   size = 1) +
   geom_point(data = pts,
              # dodging is determined by the most-recent group. Explicitly group by year
              aes(y = dummy.date, x = body,
                  color = year, shape = variable, group = year),
-             position = position_dodge(-0.3),
+             position = position_dodge(-0.75),
              size = 4) +
-  labs(x = NULL, y = NULL, color = NULL) +
+  labs(x = NULL, y = NULL, color = NULL, shape = NULL) +
   coord_flip() +
   scale_x_discrete(limits = rev(levels(test$body))) +
-  scale_y_date(date_breaks = 'month', date_labels = '%B') +
+  scale_y_date(date_breaks = 'month', date_labels = '%B',
+               limits = c(as.Date('2014-05-01'), as.Date('2014-11-01')),
+               expand = c(0, 0)) +
+  scale_color_manual(values = c('#648FFF', '#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
+  scale_shape(guide = 'none') +
   theme_bw() +
   theme(axis.text.y = element_text(angle = 60),
-        legend.position = c(0.25, 0.25)) +
-  scale_shape(guide = 'none')
+        axis.text.x = element_blank(),
+        legend.position = c(0.1, 0.3),
+        legend.background = element_blank(),
+        plot.margin = margin(0, 0, 0, 0))
+
+
+# Add sonde data
+# sonde <- fread('manuscript/data/sonde_data_marshyhope.csv')
+# sonde <- melt(sonde, id.vars = 'date')
+# sonde[, dummy.date := (yday(date) - 1) + as.Date('2014-01-01')]
+
+wq <-
+  ggplot(data = sonde) +
+  geom_line(aes(x = dummy.date,
+                y = value, color = as.factor(year(date))),
+            size = 1) +
+  scale_x_date(date_breaks = 'month', date_labels = '%B',
+               limits = c(as.Date('2014-05-01'), as.Date('2014-11-01')),
+               expand = c(0, 0)) +
+  scale_color_manual(values = c('#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
+  facet_wrap(~ variable, scales = 'free_y', ncol = 1) +
+  labs(x = NULL, y = 'Temperature (°C)       DO (mg/L)') +
+  theme_bw() +
+  theme(strip.text = element_blank(),
+        legend.position = 'none',
+        plot.margin = margin(0, 0, 0, 13))
+
+
+library(cowplot)
+library(ragg)
+
+agg_png('manuscript/figures/entry_exit.png',
+        width = 2250, height = 1406, res = 600, scaling = 0.5)
+
+plot_grid(fish, wq, ncol = 1)
+
+dev.off()
+
