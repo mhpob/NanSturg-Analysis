@@ -65,3 +65,6 @@ all <- rbindlist(list('broad creek' = broad,
                       'woodland ferry' = woodland,
                       'hatchery' = hatchery),
                  idcol = 'station')
+
+fwrite(all, 'manuscript/data_derived/dnrec_wq_aggregated.csv',
+       dateTimeAs = 'write.csv')
