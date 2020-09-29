@@ -49,13 +49,14 @@ woodland <- dnrec_pull('Wood|Jack', files)
 hatchery <- dnrec_pull('Hatch', files[-1])
 
 hatch_2015 <- read_xlsx(files[1], sheet = 'Hatchery', skip = 6,
-                        range = cell_limits(c(7, 1), c(NA, 8)))
+                        range = cell_limits(c(7, 1), c(NA, 9)))
+hatch_2015 <- hatch_2015[, -7]
 setnames(hatch_2015, c('date.edt', 'temp_c', 'spcond_us', 'sal', 'ph', 'ph_mv',
                        'do_pct', 'do_mgl'))
 hatch_2015 <- data.table(hatch_2015)[, lapply(.SD, mean, na.rm = T),
                                      by = (date = as.Date(date.edt))]
 
-hatchery <- rbind(hatch, hatch_2015)
+hatchery <- rbind(hatchery, hatch_2015)
 
 
 
