@@ -22,3 +22,6 @@ vignettes/*.pdf
 # MS drafts, etc.
 *.docx
 *.pptx
+
+# Large figures
+/manuscript/figures
