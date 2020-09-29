@@ -1,8 +1,8 @@
 library(lubridate); library(data.table)
 
 # Load receiver rkm
-mdnr <- fread('manuscript/data/mddnr_receiver_rkm.csv')
-dnrec <- fread('manuscript/data/dnrec_receiver_rkm.csv')
+mdnr <- fread('manuscript/data_derived/mddnr_receiver_rkm.csv')
+dnrec <- fread('manuscript/data_derived/dnrec_receiver_rkm.csv')
 dnrec[, ':='('station' = site,
              site = NULL,
              year = NULL)]
@@ -90,19 +90,46 @@ fish <- ggplot() +
 
 
 # Add sonde data
-# sonde <- fread('manuscript/data/sonde_data_marshyhope.csv')
-# sonde <- melt(sonde, id.vars = 'date')
-# sonde[, dummy.date := (yday(date) - 1) + as.Date('2014-01-01')]
+mdnr_sonde <- fread('manuscript/data/sonde_data_marshyhope.csv')
+setnames(mdnr_sonde, c('date', 'do_mgl', 'temp_c'))
+mdnr_sonde[, station := 'marshyhope']
+
+mg2pct <- function(do_mgl, altitude, temperature){
+  # copied from here:https://www.waterontheweb.org/under/waterquality/oxygen.html
+  P_rel<- exp(5.25 * log(1 - (altitude / 44.3)))
+  P_wv <- exp(11.8571 -
+                (3840.7 / (temperature + 273.15)) -
+                (216961 / (temperature + 273.15) ^ 2))
+  theta <- 0.000975 - (1.426e-5 * temperature) + (6.436e-8 * temperature ^ 2)
+
+  C_star <- exp(7.7117 - 1.31403 * log(temperature + 45.93))
+
+  Cp <- C_star * P_rel * (
+    ((1 - P_wv / P_rel) * (1 - theta * P_rel)) /
+      ((1 - P_wv) * (1 - theta))
+  )
+
+  (100 * do_mgl) / Cp
+}
+
+mdnr_sonde[, do_pct := mg2pct(do_mgl, 0, temp_c)]
+
+dnrec_sonde <- fread('manuscript/data_derived/dnrec_wq_aggregated.csv')
+
+sonde <- rbind(mdnr_sonde, dnrec_sonde[, .(station, date, do_mgl, temp_c)])
+sonde <- melt(sonde, id.vars = c('date', 'station'))
+sonde[, dummy.date := (yday(date) - 1) + as.Date('2014-01-01')]
 
 wq <-
   ggplot(data = sonde) +
   geom_line(aes(x = dummy.date,
-                y = value, color = as.factor(year(date))),
+                y = value, color = as.factor(year(date)),
+                linetype = station),
             size = 1) +
   scale_x_date(date_breaks = 'month', date_labels = '%B',
                limits = c(as.Date('2014-05-01'), as.Date('2014-11-01')),
                expand = c(0, 0)) +
-  scale_color_manual(values = c('#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
+  # scale_color_manual(values = c('#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
   facet_wrap(~ variable, scales = 'free_y', ncol = 1) +
   labs(x = NULL, y = 'Temperature (°C)       DO (mg/L)') +
   theme_bw() +
