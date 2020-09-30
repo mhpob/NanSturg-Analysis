@@ -1,56 +1,43 @@
-library(sf)
+library(dplyr); library(sf)
 
-# From https://www.sciencebase.gov/catalog/item/5a58a3d2e4b00b291cd68276
-shape <- read_sf('manuscript/data/NHD_0208_HU4.gdb',
-                 layer = 'NHDReachCodeMaintenance')
-reachcode <- shape[grepl('Nanti|Marshy.*k$', shape$GNIS_Name),]$ReachCode
-perm_id <- shape[grepl('Nanti|Marshy.*k$', shape$GNIS_Name),]$Permanent_Identifier
+# Create box to crop using well-known text
+#   Decided not to do it this way, but keeping it here in case I want to in the future
 
-huc12 <- read_sf('manuscript/data/NHD_0208_HU4.gdb',
-                 layer = 'WBDHU12')
-
-View(huc12)
-
-nhd_area <- read_sf('manuscript/data/NHD_0208_HU4.gdb',
-                    layer = 'NHDArea')
-# Pull HUC12 areas in the Nanticoke, Marshyhipe, Deep Creek, or Broad Creek
-
-shape <- st_intersection(huc12[grepl('-Nant|-Marshy|^(Up|Lo).*Deep C|-Broad', huc12$Name),],
-                            nhd_area)
-shape <- shape[!grepl('Tommy Wright|Saulsbury', shape$Name),]
-plot(st_geometry(shape))
+# crop_wkt <- st_bbox(c(ymin = 38.223568, xmin = -75.969909,
+#                       ymax = 38.730472, xmax = -75.552283),
+#                     crs = st_crs(4269)) %>%
+#   st_as_sfc() %>%
+#   st_as_text()
 
 
+nan <- st_read('manuscript/data/spatial/NHD_H_0208_HU4_GDB.gdb',
+               layer = 'wbdhu10',
+               query = "SELECT OGR_GEOM_WKT AS wkt
+                        FROM wbdhu10
+                        WHERE States LIKE 'D%'")
 
-plot(st_geometry(nhd_area))
-
-lines <- read_sf('manuscript/data/NHD_0208_HU4.gdb',
-                 layer = st_layers('manuscript/data/NHD_0208_HU4.gdb')$name[17])
-
-k <- shape[shape$Permanent_Identifier %in% perm_id, ]
-
-crop_sh <- st_bbox(c(xmin = -75.966,
-                  xmax = -75.551,
-                  ymin = 38.218,
-                  ymax = 38.726),
-                crs = st_crs(4326)) %>%
-  st_as_sfc() %>%
-  st_as_sf() %>%
-  st_transform(st_crs(nhd_area)) %>%
-  st_intersection(nhd_area)
+nan <- st_read('manuscript/data/spatial/NHD_H_0208_HU4_GDB.gdb',
+               layer = 'nhdarea',
+               wkt_filter = nan$wkt)
 
 
 
 
-md_shape <- read_sf('manuscript/data/maryland_rivers_and_streams.gdb')
-crop <- st_bbox(c(xmin = -75.966,
-                  xmax = -75.551,
-                  ymin = 38.218,
-                  ymax = 38.726),
-                crs = st_crs(4326)) %>%
-  st_as_sfc() %>%
-  st_transform(st_crs(md_shape))
+library(ggplot2)
 
-marshy <- md_shape %>%
-  st_intersection(crop) %>%
-  dplyr::filter(LAYER == 'SHORE')
+lower <-
+  ggplot(data = nan) +
+  geom_sf() +
+  coord_sf(xlim = c(-75.97, -75.74), ylim = c(38.2467, 38.55), expand = F) +
+  theme_bw()
+
+upper <-
+  ggplot(data = nan) +
+  geom_sf() +
+  coord_sf(label_axes = '-NE-',
+           xlim = c(-75.83, -75.55), ylim = c(38.52, 38.7), expand = F) +
+  theme_bw()
+
+
+library(patchwork)
+lower + upper
