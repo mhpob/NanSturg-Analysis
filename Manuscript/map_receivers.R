@@ -36,13 +36,26 @@ mdnr <- data.table::fread('manuscript/data/detections/sturgeon_detections.gz') %
          year = as.factor(year))
 
 
-library(ggplot2)
+
+# Locations of labels
+labels <- data.frame(
+  long = c(-75.83, -75.77, -75.6, -75.65, -75.577, -75.635, -75.8),
+  lat = c(38.27, 38.63, 38.6, 38.55, 38.633, 38.64, 38.695),
+  labs = c('Lower Nanticoke', 'Marshyhope Creek', 'Upper Nanticoke',
+           'Broad Creek', 'Deep Creek', 'Seaford, DE', 'Federalsburg, MD')
+)
+
+
+
+# Plotting
+library(ggplot2); library(patchwork); library(ragg)
 
 lower <- ggplot() +
   geom_sf(data = nan) +
   coord_sf(xlim = c(-75.97, -75.74), ylim = c(38.2467, 38.55), expand = F) +
   geom_point(data = mdnr, aes(x = long_nudge, y = lat, color = year),
              size = 5) +
+  geom_text(data = labels, aes(x = long, y = lat, label = labs)) +
   labs(x = NULL, y = NULL) +
   theme_bw() +
   theme(legend.position = 'none')
@@ -55,15 +68,23 @@ upper <- ggplot() +
              size = 5) +
   geom_point(data = mdnr, aes(x = long_nudge, y = lat, color = year),
              size = 5) +
+  geom_text(data = labels, aes(x = long, y = lat, label = labs),
+             check_overlap = T) +
   labs(x = NULL, y = NULL, color = 'Year') +
   theme_bw()
+
+
+out <- lower + upper & theme(plot.margin = margin(0, 0, 0, 0))
+ggsave('manuscript/figures/map.png', out, dpi = 600,
+       width = 7.5, height = 3.65,
+       scale = 1.75)
+       # width = 4500, height = 2189)
+
+
+
+dev.off()
+
+
 ########
-### Need to annotate: Federalsburg, Seaford, Lower Nanticoke, Upper Nanticoke,
-###     Marsyhhope, Broad, Deep
 ### Need to create: inset, labeled with James and York
-
-
-library(patchwork)
-lower + upper
-
 
