@@ -88,9 +88,6 @@ lower + upper & theme(plot.margin = margin(0, 0, 0, 0))
 dev.off()
 
 
-########
-### Need to create: inset, labeled with James and York
-
 # Make a polygon using a bounding box
 crop_box <- st_bbox(c(ymin = 36.76498, xmin = -77.08675,
                       ymax = 39.72379, xmax = -74.84402),
@@ -119,7 +116,22 @@ inset_map <- crop_box %>%
   .[-c(2, 5),]
 
 
+# Create data frame to hold labels
+river_labels <- data.frame(
+  long = c(-76.832102, -76.902022),
+  lat = c(36.99268, 37.612137),
+  labs = c('James', 'York')
+)
+
+
 ggplot() +
   geom_sf(data = inset_map, fill = 'gray') +
+  geom_text(data = river_labels, aes(x = long, y = lat, label = labs), angle = -45,
+            size = 16 / .pt) +
   coord_sf(expand = F) +
   theme_void()
+
+
+
+########
+### Need to layer the inset
