@@ -47,6 +47,7 @@ test <- unique(test, by = c('body', 'transmitter', 'date', 'year'))
 test <- test[, body := factor(body, ordered = T,
                               levels = c('Nanticoke River', 'Marshyhope Creek',
                                          'Broad Creek', 'Deep Creek'))]
+test <- test[year != 2014]
 
 pts <- test[, .(min(date),
          max(date)), by = c('transmitter', 'year', 'body')][
@@ -60,7 +61,7 @@ library(ggplot2)
 fish <- ggplot() +
   geom_linerange(data = test,
                  aes(y = dummy.date, x = body,
-                      color = year),
+                      color = year, linetype = body),
                   stat = 'summary',
                   fun.min = 'min',
                   fun.max = 'max',
@@ -80,6 +81,8 @@ fish <- ggplot() +
                limits = c(as.Date('2014-05-01'), as.Date('2014-11-01')),
                expand = c(0, 0)) +
   scale_color_manual(values = c('#648FFF', '#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
+  scale_linetype_manual(values  = c('solid', 'dotdash', 'dashed', 'dotted'),
+                        guide = 'none') +
   scale_shape(guide = 'none') +
   theme_bw() +
   theme(axis.text.y = element_text(angle = 60),
@@ -116,9 +119,23 @@ mdnr_sonde[, do_pct := mg2pct(do_mgl, 0, temp_c)]
 
 dnrec_sonde <- fread('manuscript/data_derived/dnrec_wq_aggregated.csv')
 
-sonde <- rbind(mdnr_sonde, dnrec_sonde[, .(station, date, do_mgl, temp_c)])
+sonde <- rbind(mdnr_sonde, dnrec_sonde[, .(station, date, do_mgl, do_pct, temp_c)])
+
+# Manually remove bead data
+sonde[grepl('broad', station) & date %between% c('2015-08-18', '2015-10-22'),
+      ':='(do_pct = NA, do_mgl = NA)]
+sonde[grepl('marsh', station) & date %between% c('2015-09-15', '2015-10-22'),
+      ':='(do_pct = NA, do_mgl = NA)]
+sonde[grepl('seaf', station) & date %between% c('2016-10-27', '2016-11-06'),
+      ':='(do_pct = NA, do_mgl = NA)]
+sonde[grepl('wood', station) & date %between% c('2018-09-15', '2018-09-27'),
+      ':='(do_pct = NA, do_mgl = NA)]
+
 sonde <- melt(sonde, id.vars = c('date', 'station'))
 sonde[, dummy.date := (yday(date) - 1) + as.Date('2014-01-01')]
+
+sonde <- sonde[grepl('pct|temp', variable) & station != 'hatchery']
+
 
 wq <-
   ggplot(data = sonde) +
@@ -129,7 +146,9 @@ wq <-
   scale_x_date(date_breaks = 'month', date_labels = '%B',
                limits = c(as.Date('2014-05-01'), as.Date('2014-11-01')),
                expand = c(0, 0)) +
-  # scale_color_manual(values = c('#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
+  scale_color_manual(values = c('#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
+
+  scale_linetype_manual(values  = c('dashed', 'dotdash', 'dotted', 'solid')) +
   facet_wrap(~ variable, scales = 'free_y', ncol = 1) +
   labs(x = NULL, y = 'Temperature (°C)       DO (mg/L)') +
   theme_bw() +
