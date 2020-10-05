@@ -44,9 +44,15 @@ test <- test[!is.na(body)]
 
 
 test <- unique(test, by = c('body', 'transmitter', 'date', 'year'))
+test[, body := fcase(grepl('Nanti', body), 'Nanticoke R.',
+                     grepl('Marsh', body), 'Marshyhope Cr.',
+                     grepl('Broad', body), 'Broad Cr.',
+                     grepl('Deep', body), 'Deep Cr.')]
 test <- test[, body := factor(body, ordered = T,
-                              levels = c('Nanticoke River', 'Marshyhope Creek',
-                                         'Broad Creek', 'Deep Creek'))]
+                              levels = c('Nanticoke R.', 'Marshyhope Cr.',
+                                         'Broad Cr.', 'Deep Cr.'))]
+
+
 test <- test[year != 2014]
 
 pts <- test[, .(min(date),
@@ -80,16 +86,16 @@ fish <- ggplot() +
   scale_y_date(date_breaks = 'month', date_labels = '%B',
                limits = c(as.Date('2014-05-01'), as.Date('2014-11-01')),
                expand = c(0, 0)) +
-  scale_color_manual(values = c('#648FFF', '#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
+  scale_color_manual(values = c('#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
   scale_linetype_manual(values  = c('solid', 'dotdash', 'dashed', 'dotted'),
                         guide = 'none') +
   scale_shape(guide = 'none') +
   theme_bw() +
-  theme(axis.text.y = element_text(angle = 60),
+  theme(axis.text.y = element_text(angle = 45),
         axis.text.x = element_blank(),
         legend.position = c(0.1, 0.3),
         legend.background = element_blank(),
-        plot.margin = margin(0, 0, 0, 0))
+        plot.margin = margin(0, 2, 0, 0))
 
 
 # Add sonde data
@@ -136,25 +142,32 @@ sonde[, dummy.date := (yday(date) - 1) + as.Date('2014-01-01')]
 
 sonde <- sonde[grepl('pct|temp', variable) & station != 'hatchery']
 
+sonde[, variable := fcase(variable == 'do_pct', 'Dissolved oxygen
+(% saturation)',
+                          variable == 'temp_c', 'Temperature (°C)')]
+
 
 wq <-
   ggplot(data = sonde) +
   geom_line(aes(x = dummy.date,
                 y = value, color = as.factor(year(date)),
                 linetype = station),
-            size = 1) +
+            size = 0.5) +
   scale_x_date(date_breaks = 'month', date_labels = '%B',
                limits = c(as.Date('2014-05-01'), as.Date('2014-11-01')),
                expand = c(0, 0)) +
   scale_color_manual(values = c('#785EF0', '#DC267F', '#FE6100', '#FFB000')) +
 
   scale_linetype_manual(values  = c('dashed', 'dotdash', 'dotted', 'solid')) +
-  facet_wrap(~ variable, scales = 'free_y', ncol = 1) +
-  labs(x = NULL, y = 'Temperature (°C)       DO (mg/L)') +
+  facet_wrap(~ variable, scales = 'free_y', ncol = 1, strip.position = 'left') +
+  labs(x = NULL, y = NULL) +
   theme_bw() +
-  theme(strip.text = element_blank(),
+  theme(strip.placement = 'outside',
+        strip.background = element_blank(),
         legend.position = 'none',
-        plot.margin = margin(0, 0, 0, 13))
+        plot.margin = margin(0, 2, 0, 5),
+        axis.text.x = element_text(angle = 25, hjust = 1),
+        axis.title.y = element_text(size = 7))
 
 
 library(cowplot)
