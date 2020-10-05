@@ -88,3 +88,19 @@ dev.off()
 ########
 ### Need to create: inset, labeled with James and York
 
+wkt_bbox <- st_bbox(c(ymin = 36.76498, xmin = -77.08675,
+                      ymax = 39.72379, xmax = -74.84402),
+                    crs = st_crs(4326))
+crop_wkt <- wkt_bbox %>%
+  st_as_sfc() %>%
+  st_as_text()
+
+inset_map <- st_read('manuscript/data/spatial/natural earth/ne_10m_coastline.shp')
+%>%
+  st_crop(wkt_bbox)
+
+
+ggplot() +
+  geom_sf(data = inset_map, color = 'red') +
+  coord_sf() +
+  theme_bw()
