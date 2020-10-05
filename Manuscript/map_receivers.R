@@ -74,10 +74,13 @@ upper <- ggplot() +
   theme_bw()
 
 
-out <- lower + upper & theme(plot.margin = margin(0, 0, 0, 0))
-ggsave('manuscript/figures/map.png', out, dpi = 600,
-       width = 7.5, height = 3.65,
-       scale = 1.75)
+agg_png('manuscript/figures/map.png', res = 600,
+        width = 7.5, height = 3.65, scaling = .75, units = 'in')
+
+lower + upper & theme(plot.margin = margin(0, 0, 0, 0))
+# ggsave('manuscript/figures/map.png', out, dpi = 600,
+#        width = 7.5, height = 3.65,
+#        scale = 1.75)
        # width = 4500, height = 2189)
 
 
@@ -88,19 +91,35 @@ dev.off()
 ########
 ### Need to create: inset, labeled with James and York
 
-wkt_bbox <- st_bbox(c(ymin = 36.76498, xmin = -77.08675,
+# Make a polygon using a bounding box
+crop_box <- st_bbox(c(ymin = 36.76498, xmin = -77.08675,
                       ymax = 39.72379, xmax = -74.84402),
-                    crs = st_crs(4326))
-crop_wkt <- wkt_bbox %>%
-  st_as_sfc() %>%
-  st_as_text()
+                    crs = st_crs(4326)) %>%
+  # turn into a simple features collection
+  st_as_sfc()
 
-inset_map <- st_read('manuscript/data/spatial/natural earth/ne_10m_coastline.shp')
-%>%
-  st_crop(wkt_bbox)
+
+# Import map, selecting only features that touch the crop box.
+#   Do this by turning the box into well-known text
+
+inset_map <- st_read('manuscript/data/spatial/natural earth/ne_10m_coastline.shp',
+                     # turn box into well-known text
+                     wkt_filter = st_as_text(crop_box))
+
+plot(inset_map$geometry)
+
+
+# Use the coastline (a linestring) to cut up the bbox polygon
+inset_map <- crop_box %>%
+  lwgeom::st_split(inset_map) %>%
+  # Separate into individual features
+  st_collection_extract() %>%
+  # just so happens that features 5 (upper Potomac) and 2 (everything else) have
+  #   what we need
+  .[-c(2, 5),]
 
 
 ggplot() +
-  geom_sf(data = inset_map, color = 'red') +
-  coord_sf() +
-  theme_bw()
+  geom_sf(data = inset_map, fill = 'gray') +
+  coord_sf(expand = F) +
+  theme_void()
