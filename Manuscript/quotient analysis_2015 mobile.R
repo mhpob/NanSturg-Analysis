@@ -1,16 +1,12 @@
 library(data.table)
 
-mobile <- fread('data/marshnan_data.csv',
+mobile <- fread('manuscript/data/marshnan_data.csv',
                 col.names = function(.) tolower(gsub('[ .]', '_', .)))
 mobile <- mobile[type == 'B']
+mobile[, week := week(as.Date(date, format = '%m/%d/%Y'))]
 
 
 library(TelemetryR)
-
-subs <- mobile[grepl('1A', cruise)]
-t <- quo_an(mobile$temp, mobile$detections, pres_abs = T)
-
-hist(mobile$temp, breaks = seq(min(mobile$temp), ceiling(max(mobile$temp)), by = 1))
 
 
 QAplot <- function(data, env, width){
@@ -38,7 +34,7 @@ QAplot <- function(data, env, width){
   par(new = T)
   plot(env.hist$mids, QA.result$Qe, type = 'b', col = 'red', lwd = 3,
        xlim = c(min.data - lims, max.data + lims),
-       ylim = c(0, ceiling(max(QA.result[, 6:8], na.rm = T))),
+       ylim = c(0, ceiling(max(QA.result[, 6:8][is.finite(as.matrix(QA.result[, 6:8]))]))),
        yaxt = 'n', ylab = '', xlab = '', main = env)
   lines(env.hist$mids, QA.result$CI_0.975, lty = 5, lwd = 2, col = 'pink')
   lines(env.hist$mids, QA.result$CI_0.025, lty = 5, lwd = 2, col = 'pink')
@@ -49,15 +45,8 @@ QAplot <- function(data, env, width){
   abline(h = 1, lty = 3, col = 'blue')
 }
 
-QAplot(mobile, 'temp', 1)
-QAplot(mobile, 'cond', 500)
-QAplot(mobile, 'sal', 1)
-QAplot(mobile, 'do_mg_l', 2)
-
-
-library(mgcv)
-
-tt <- gam(detections ~ s(temp),
-          family = quasibinomial(),
-          data = mobile)
-summary(tt)
+# Plot quotient by week
+mobile[, QAplot(.SD, 'temp', 1), by = 'week']
+mobile[, QAplot(.SD, 'cond', 500), by = 'week']
+mobile[, QAplot(.SD, 'sal', 1), by = 'week']
+mobile[, QAplot(.SD, 'do_pct', 10), by = 'week']
