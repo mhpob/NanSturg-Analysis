@@ -1,6 +1,6 @@
 library(data.table)
 
-mobile <- fread('manuscript/data/marshnan_data.csv',
+mobile <- fread('c:/users/darpa2/analysis/nansturg-analysis/manuscript/data/marshnan_data.csv',
                 col.names = function(.) tolower(gsub('[ .]', '_', .)))
 mobile <- mobile[type == 'B']
 mobile[, week := week(as.Date(date, format = '%m/%d/%Y'))]
