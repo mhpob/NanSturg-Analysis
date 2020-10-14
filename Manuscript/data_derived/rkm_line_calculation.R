@@ -37,13 +37,6 @@ nan_split <- flowline %>%
   st_length() %>%
   units::set_units(km)
 
-## Return RKMs
-cumsum(nan_split)
-
-# Units: [km]
-# [1] 45.55766 58.47172 68.09327 80.51762
-#     Marshy,  Broad,   Deep
-
 
 
 # Break the line that makes up the flowline into points 1 km apart from each other ----
@@ -58,14 +51,10 @@ rkms <- flowline %>%
           mutate(body = flowline$gnis_name)) %>%
   st_transform(4326) %>%
   group_by(body) %>%
-  mutate(rkm = (length(body)-1):0)
-
-# Select every 5th RKM
-rkms <- rkms %>%
+  mutate(rkm = (length(body)-1):0) %>%
+  # Select every 5th RKM
   filter(rkm %in% seq(0, max(rkm), by = 5))
 
-
-# write.csv(rkms, 'data/raw/nanticoke_system_rkms.csv', row.names = F)
 
 nan_poly <- st_read('manuscript/data/spatial/NHD_H_0208_HU4_GDB.gdb',
                     layer = 'wbdhu10',
@@ -77,62 +66,84 @@ nan_poly <- st_read('manuscript/data/spatial/NHD_H_0208_HU4_GDB.gdb',
                     layer = 'nhdarea',
                     wkt_filter = nan_poly$wkt)
 
-# Convert rkms to nan_poly crs
-rkms <- rkms %>%
-  st_transform(st_crs(nan_poly))
-
-
-rkms <- rkms %>%
-  st_transform(32618)
-
+# Convert to meter-based CRS
 nan_poly <- nan_poly %>%
   st_transform(32618)
 
-rkm5 <- rkms %>%
-  ungroup() %>%
-  filter(grepl('Nan', body), rkm == 5)
-
-
-rkm5_poly <- nan_poly %>%
-  st_intersection(st_buffer(rkm5, 5000))
+rkms <- rkms %>%
+  st_transform(32618) %>%
+  st_intersection(nan_poly)
 
 
 
-buff_pts <- st_buffer(rkm5, 5000) %>%
+
+rkm_poly <- nan_poly %>%
+  st_intersection(st_buffer(rkms, 5000))
+
+
+
+buff_pts <- rkms %>%
+  st_buffer(5000) %>%
   st_cast('POINT')
 
-line_ind <- buff_pts %>%
-  st_distance(buff_pts) %>%
-  as.matrix() %>%
-  apply(1, as.numeric)
+buff_pts <- split(buff_pts, interaction(buff_pts$body, buff_pts$rkm))
+buff_pts <- buff_pts[sapply(buff_pts, function(x) length(st_geometry(x)) > 0)]
 
-line_ind[lower.tri(line_ind, diag = T)] <- NA
-line_ind <- which(line_ind[, 1:(ncol(line_ind)-1)] >= 9999.9, arr.ind = T)
+# line_ind <- lapply(buff_pts, function(.){
+#   apply(
+#     as.matrix(
+#       st_distance(., .)
+#     ),
+#     1,
+#     as.numeric)
+# })
 
-buff_lines <- mapply(
-  function(a, b){
-    st_cast(st_union(a, b), 'LINESTRING')
-  },
-  st_geometry(buff_pts[line_ind[,1],]),
-  st_geometry(buff_pts[line_ind[,2],]), SIMPLIFY = F) %>%
-  st_sfc(crs =32618)
+line_ind <- vector('list', length(buff_pts))
+rkm_line <- vector('list', length(buff_pts))
+
+for(i in seq_along(buff_pts)){
+  line_ind[[i]] <- buff_pts[[i]] %>%
+    st_distance() %>%
+    as.matrix() %>%
+    apply(., 1, as.numeric)
+
+  line_ind[[i]][lower.tri(line_ind[[i]], diag = T)] <- NA
+
+  line_ind[[i]] <- which(line_ind[[i]][, 1:(ncol(line_ind[[i]]) - 1)] >= 9999.9, arr.ind = T)
+
+  buff_lines[[i]] <- mapply(
+    function(a, b){
+      st_cast(st_union(a, b), 'LINESTRING')
+    }, st_geometry(buff_pts[[i]][line_ind[[i]][,1],]),
+    st_geometry(buff_pts[[i]][line_ind[[i]][,2],]),
+    SIMPLIFY = F) %>%
+    st_sfc(crs = 32618) %>%
+    st_as_sf()
+
+  rkm_poly <- nan_poly %>%
+    st_intersection(st_buffer(
+      filter(rkms,
+             body == buff_pts[[i]]$body[1],
+             rkm == buff_pts[[i]]$rkm[1]),
+      1))
+
+  rkm_lines[[i]] <- buff_lines[[i]] %>%
+    st_intersection(rkm_poly) %>%
+    st_cast('MULTILINESTRING') %>%
+    st_cast('LINESTRING') %>%
+    filter(st_intersects(.,
+                         st_buffer(
+                           filter(rkms,
+                                  body == buff_pts[[i]]$body[1],
+                                  rkm == buff_pts[[i]]$rkm[1]),
+                           1), #buffer b/c of precision issues
+                         sparse = F)) %>%
+    slice(which.min(st_length(.)))
 
 
+}
 
-plot(st_geometry(rkm5_poly), add = T)
-plot(buff_lines, add = T, col = 'red', lwd = 5)
+rkm_lines <- bind_rows(rkm_lines)
 
-
-test <- buff_lines %>%
-  st_as_sf() %>%
-  st_intersection(rkm5_poly) %>%
-  st_cast('MULTILINESTRING') %>%
-  st_cast('LINESTRING') %>%
-  filter(st_intersects(.,
-                       st_buffer(rkm5, 1), #buffer b/c of precision issues
-                       sparse = F)) %>%
-  slice(which.min(st_length(.)))
-
-plot(st_geometry(rkm5_poly))
-plot(st_geometry(test), add = T, col = 'red')
-plot(st_geometry(rkm5), add = T, col = 'blue')
+plot(st_geometry(nan_poly))
+plot(test, add = T, col = 'red', lwd = 2)
