@@ -77,11 +77,6 @@ rkms <- rkms %>%
 
 
 
-rkm_poly <- nan_poly %>%
-  st_intersection(st_buffer(rkms, 5000))
-
-
-
 buff_pts <- rkms %>%
   st_buffer(5000) %>%
   st_cast('POINT')
@@ -89,17 +84,10 @@ buff_pts <- rkms %>%
 buff_pts <- split(buff_pts, interaction(buff_pts$body, buff_pts$rkm))
 buff_pts <- buff_pts[sapply(buff_pts, function(x) length(st_geometry(x)) > 0)]
 
-# line_ind <- lapply(buff_pts, function(.){
-#   apply(
-#     as.matrix(
-#       st_distance(., .)
-#     ),
-#     1,
-#     as.numeric)
-# })
 
 line_ind <- vector('list', length(buff_pts))
-rkm_line <- vector('list', length(buff_pts))
+rkm_lines <- vector('list', length(buff_pts))
+buff_lines <- vector('list', length(buff_pts))
 
 for(i in seq_along(buff_pts)){
   line_ind[[i]] <- buff_pts[[i]] %>%
@@ -125,7 +113,7 @@ for(i in seq_along(buff_pts)){
       filter(rkms,
              body == buff_pts[[i]]$body[1],
              rkm == buff_pts[[i]]$rkm[1]),
-      1))
+      2000))
 
   rkm_lines[[i]] <- buff_lines[[i]] %>%
     st_intersection(rkm_poly) %>%
@@ -146,4 +134,4 @@ for(i in seq_along(buff_pts)){
 rkm_lines <- bind_rows(rkm_lines)
 
 plot(st_geometry(nan_poly))
-plot(test, add = T, col = 'red', lwd = 2)
+plot(rkm_lines, add = T, col = 'red', lwd = 2)
