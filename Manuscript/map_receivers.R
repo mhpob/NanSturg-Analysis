@@ -74,18 +74,7 @@ upper <- ggplot() +
   theme_bw()
 
 
-agg_png('manuscript/figures/map.png', res = 600,
-        width = 7.5, height = 3.65, scaling = .75, units = 'in')
 
-lower + upper & theme(plot.margin = margin(0, 0, 0, 0))
-# ggsave('manuscript/figures/map.png', out, dpi = 600,
-#        width = 7.5, height = 3.65,
-#        scale = 1.75)
-       # width = 4500, height = 2189)
-
-
-
-dev.off()
 
 
 # Make a polygon using a bounding box
@@ -124,14 +113,34 @@ river_labels <- data.frame(
 )
 
 
-ggplot() +
+inset <- ggplot() +
   geom_sf(data = inset_map, fill = 'gray') +
   geom_text(data = river_labels, aes(x = long, y = lat, label = labs), angle = -45,
-            size = 16 / .pt) +
+            size = 8 / .pt) +
   coord_sf(expand = F) +
-  theme_void()
+  theme_void() +
+  theme(plot.margin = margin(0, 0, 0, 0))
+        # panel.border = element_rect(color = 'black', fill = NA))
 
 
 
 ########
 ### Need to layer the inset
+
+library(cowplot)
+lower_inset <- lower + draw_plot(inset, -76.0113, 38.4, 0.2, 0.149)
+
+
+
+agg_png('manuscript/figures/map.png', res = 600,
+        width = 7.5, height = 3.65, scaling = .75, units = 'in')
+
+lower_inset + upper & theme(plot.margin = margin(0, 0, 0, 0))
+# ggsave('manuscript/figures/map.png', out, dpi = 600,
+#        width = 7.5, height = 3.65,
+#        scale = 1.75)
+# width = 4500, height = 2189)
+
+
+
+dev.off()
