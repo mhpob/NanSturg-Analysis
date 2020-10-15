@@ -95,8 +95,10 @@ for(i in seq_along(buff_pts)){
     as.matrix() %>%
     apply(., 1, as.numeric)
 
+  # Drop duplicated values and zeroes (half the distance matrix)
   line_ind[[i]][lower.tri(line_ind[[i]], diag = T)] <- NA
 
+  # Select indices of lines that span the whole circle (10 km, less 0.1 for precision issues)
   line_ind[[i]] <- which(line_ind[[i]][, 1:(ncol(line_ind[[i]]) - 1)] >= 9999.9, arr.ind = T)
 
   buff_lines[[i]] <- mapply(
@@ -132,6 +134,62 @@ for(i in seq_along(buff_pts)){
 }
 
 rkm_lines <- bind_rows(rkm_lines)
+rkm_lines <- rkm_lines %>%
+  select(body, rkm, x)
 
 plot(st_geometry(nan_poly))
 plot(rkm_lines, add = T, col = 'red', lwd = 2)
+
+rkm_lines <- rkm_lines %>%
+  st_transform(4326)
+
+
+
+#Simpler? Starting from line 80
+buff_pts <- rkms %>%
+  select(body, rkm) %>%
+  st_buffer(5000) %>%
+  st_cast('POINT') %>%
+  tidyr::nest(buffer = x)
+
+
+
+k <- buff_pts %>%
+  mutate(
+    # Create distance matrix between all vertices of the 5km buffer
+    dist_mat = lapply(buffer, st_distance),
+
+    # Remove lower triangle and diagonal of the matrix (length from A -> B is
+    #   equivalent to the length from B -> A, so only need to calculate half)
+    dist_mat = lapply(dist_mat, function(.) ifelse(lower.tri(., diag = T), NA, .)),
+
+    # Find indices of the points that are the full diameter apart (10 km), but allow
+    #   some wiggle room for precisions' sake (10 km - 1 = 9999)
+    indices = lapply(dist_mat, function(.) which(.[, 1:(ncol(.) - 1)] > 9999, arr.ind = T)),
+    line1 = lapply(buffer, function(.){
+      slice()
+    })
+  )
+
+
+
+## Fail at map
+# k <- buff_pts %>%
+#   mutate(line_st = map(buffer, ~ slice(., 1:60)),
+#          line_end = map(buffer, ~ slice(., 61:120)),
+#          line_end = map(line_end, function(.) mutate(., mark = st_coordinates(.)[,2])),
+#          line = map2(line_st, line_end,
+#                      st_union),
+#          line = map(line, function(.) distinct(., mark)))
+#
+# p <- mapply(function(start, end){
+#   mapply(
+#     function(a, b){
+#       st_cast(st_union(a, b), 'LINESTRING')
+#     },
+#     st_geometry(start),
+#     st_geometry(end),
+#     SIMPLIFY = F)
+# },
+# k$line_st,
+# k$line_end)
