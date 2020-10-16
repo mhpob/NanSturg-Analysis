@@ -145,51 +145,88 @@ rkm_lines <- rkm_lines %>%
 
 
 
-#Simpler? Starting from line 80
-buff_pts <- rkms %>%
+# The above, but using {purrr}. I think the loop is faster.
+library(purrr)
+rkm_lines <- rkms %>%
+
+  # Drop extra columns
   select(body, rkm) %>%
-  st_buffer(5000) %>%
-  st_cast('POINT') %>%
-  tidyr::nest(buffer = x)
 
+  # "nest" (group) the points by body/rkm combination
+  tidyr::nest(geom = x) %>%
 
-
-k <- buff_pts %>%
   mutate(
-    # Create distance matrix between all vertices of the 5km buffer
-    dist_mat = lapply(buffer, st_distance),
 
-    # Remove lower triangle and diagonal of the matrix (length from A -> B is
-    #   equivalent to the length from B -> A, so only need to calculate half)
-    dist_mat = lapply(dist_mat, function(.) ifelse(lower.tri(., diag = T), NA, .)),
+    # Create 5km buffer polygon around the rkm points
+    ##  cast the polygon to points to get the vertices
+    buffer = map(geom,
+                 ~ st_cast(
+                   st_buffer(.x, 5000),
+                   'POINT'
+                 )),
 
-    # Find indices of the points that are the full diameter apart (10 km), but allow
-    #   some wiggle room for precisions' sake (10 km - 1 = 9999)
-    indices = lapply(dist_mat, function(.) which(.[, 1:(ncol(.) - 1)] > 9999, arr.ind = T)),
-    line1 = lapply(buffer, function(.){
-      slice()
-    })
-  )
+    # There are 30 vertices per quarter of the circle (this can be changed, see ?sf::st_buffer)
+    ##  For a staight line through the center, we want to connect vertices
+    ##    opposite from one another (vertex 1 and 61 are a pair; vertex 2 and 62; etc.)
+    ##  We only need to calculate these one way (line connecting 1 to 61 only, no need for 61 to 1)
+    line_st = map(buffer, ~ st_geometry(slice(., 1:60))),
+    line_end = map(buffer, ~ st_geometry(slice(., 61:120))),
 
+    # "buffer" column no longer needed; drop to free up memory
+    buffer = NULL,
 
+    # sf::st_union is not a "tidy" function; we want to combine points by row here,
+    #   but sf::st_union provides a Cartesian product (all combinations of points).
+    #   geotidy::st_union does what we want -- a row-wise union.
+    line = map2(line_st, line_end,
+                ~ geotidy::st_union(.x, .y)),
 
-## Fail at map
-# k <- buff_pts %>%
-#   mutate(line_st = map(buffer, ~ slice(., 1:60)),
-#          line_end = map(buffer, ~ slice(., 61:120)),
-#          line_end = map(line_end, function(.) mutate(., mark = st_coordinates(.)[,2])),
-#          line = map2(line_st, line_end,
-#                      st_union),
-#          line = map(line, function(.) distinct(., mark)))
-#
-# p <- mapply(function(start, end){
-#   mapply(
-#     function(a, b){
-#       st_cast(st_union(a, b), 'LINESTRING')
-#     },
-#     st_geometry(start),
-#     st_geometry(end),
-#     SIMPLIFY = F)
-# },
-# k$line_st,
-# k$line_end)
+    # "line_st" and "line_end" no longer needed; drop to free up memory
+    line_st = NULL,
+    line_end = NULL,
+
+    # cast the start/end points in "line" to a LINESTRING
+    line = map(line, ~ st_cast(., 'LINESTRING')),
+
+    # create simple feature collection with the correct CRS and convert to simple features
+    line = map(line, ~ st_sfc(.x, crs = 32618)),
+    line = map(line, ~ st_as_sf(.x)),
+
+    # Crop the lines by the Nanticoke polygon
+    line = map(line, ~ st_intersection(.x, st_geometry(nan_poly))),
+
+    # After cropping, we can wind up with multiple (MULTILINESTING) or
+    #   single (LINESTRING) line segments. To get them all to a LINESTRING, we need to cast
+    #   up to MULTILINESTRING so they are all in the same format, then back down to
+    #   LINESTRING
+    line = map(line, ~ st_cast(., 'MULTILINESTRING')),
+    line = map(line, ~ st_cast(., 'LINESTRING')),
+
+    # Remove Z value (it's all zero anyway)
+    line = map(line, ~ st_zm(.)),
+
+    # Since some lines are made up of multiple line segments, select the one that
+    #   intersects with the original RKM point. Buffering by 1 meter to get around
+    #   precision issues.
+    line = map2(line, geom, ~ filter(.x,
+                                     st_intersects(.x,
+                                                   st_buffer(.y, 1),
+                                                   sparse = F)
+                                     )
+                ),
+
+    # Select the shortest line segment that passes though the RKM point.
+    line = map(line, ~ slice(.x, which.min(st_length(.x))))
+  ) %>%
+
+  # Extract the now-single line for each body/rkm combination
+  tidyr::unnest(line) %>%
+
+  # Convert to simple features
+  st_as_sf() %>%
+
+  # Drop "geom" column rendered redundant after unnesting
+  select(body, rkm, x) %>%
+
+  # Transform back to lat/long
+  st_transform(4326)
