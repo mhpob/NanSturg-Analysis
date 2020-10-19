@@ -127,7 +127,7 @@ dnrec_sonde <- fread('manuscript/data_derived/dnrec_wq_aggregated.csv')
 
 sonde <- rbind(mdnr_sonde, dnrec_sonde[, .(station, date, do_mgl, do_pct, temp_c)])
 
-# Manually remove bead data
+# Manually remove bad data
 sonde[grepl('broad', station) & date %between% c('2015-08-18', '2015-10-22'),
       ':='(do_pct = NA, do_mgl = NA)]
 sonde[grepl('marsh', station) & date %between% c('2015-09-15', '2015-10-22'),
