@@ -142,6 +142,9 @@ plot(rkm_lines, add = T, col = 'red', lwd = 2)
 
 rkm_lines <- rkm_lines %>%
   st_transform(4326)
+row.names(rkm_lines) <- NULL
+
+st_write(rkm_lines, 'manuscript/data_derived/rkm_lines.gpkg')
 
 
 
