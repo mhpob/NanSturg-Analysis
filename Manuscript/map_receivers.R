@@ -40,13 +40,17 @@ rkm_lines <- st_read('manuscript/data_derived/rkm_lines.gpkg') %>%
 
 
 # Locations of labels
-labels <- data.frame(
-  long = c(-75.9, -75.77, -75.6, -75.65, -75.577, -75.636, -75.725),
-  lat = c(38.51, 38.63, 38.61, 38.55, 38.633, 38.64, 38.695),
+river_labels <- data.frame(
+  long = c(-75.825, -75.77, -75.7, -75.625, -75.58),
+  lat = c(38.255, 38.63, 38.61, 38.557, 38.633),
   labs = c('Lower Nanticoke', 'Marshyhope Creek', 'Upper Nanticoke',
-           'Broad Creek', 'Deep Creek', 'Seaford, DE', 'Federalsburg, MD')
+           'Broad Creek', 'Deep Creek')
 )
-
+city_labels <- data.frame(
+  long = c(-75.615, -75.77),
+  lat = c(38.64, 38.695),
+  labs = c('Seaford, DE', 'Federalsburg, MD')
+)
 
 
 # Plotting
@@ -102,8 +106,11 @@ upper <-
                    segment.color = 'blue') +
   coord_sf(label_axes = '-NE-',
            xlim = c(-75.845, -75.54), ylim = c(38.52, 38.7), expand = F) +
-  geom_text(data = labels, aes(x = long, y = lat, label = labs),
+  geom_text(data = river_labels, aes(x = long, y = lat, label = labs),
              check_overlap = T) +
+  geom_label_repel(data = city_labels, aes(x = long, y = lat, label = labs),
+                   nudge_x = c(-0.04, 0.05), nudge_y = c(0.01, -0.01),
+                   label.size = 0, label.padding = unit(0.1, 'line')) +
   labs(x = NULL, y = NULL, color = 'Year') +
   theme_bw()
 
@@ -164,12 +171,8 @@ inset <- ggplot() +
         # panel.border = element_rect(color = 'black', fill = NA))
 
 
-
-########
-### Need to layer the inset
-
 library(cowplot)
-lower_inset <- lower + draw_plot(inset, -76.0113, 38.4, 0.2, 0.149)
+lower_inset <- lower + draw_plot(inset, -76, 38.399, 0.2, 0.149)
 
 
 
@@ -177,11 +180,6 @@ agg_png('manuscript/figures/map2.png', res = 600,
         width = 7.5, height = 3.65, scaling = .75, units = 'in')
 
 lower_inset + upper & theme(plot.margin = margin(0, 0, 0, 0))
-# ggsave('manuscript/figures/map.png', out, dpi = 600,
-#        width = 7.5, height = 3.65,
-#        scale = 1.75)
-# width = 4500, height = 2189)
-
 
 
 dev.off()
