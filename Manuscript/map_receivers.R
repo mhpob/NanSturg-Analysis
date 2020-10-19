@@ -35,6 +35,7 @@ mdnr <- data.table::fread('manuscript/data/detections/sturgeon_detections.gz') %
   mutate(long_nudge = long + (year - 2016.5) / 250,
          year = as.factor(year))
 
+rkm_lines <- st_read('manuscript/data_derived/rkm_lines.gpkg')
 
 
 # Locations of labels
@@ -52,22 +53,31 @@ library(ggplot2); library(patchwork); library(ragg)
 
 lower <- ggplot() +
   geom_sf(data = nan) +
-  coord_sf(xlim = c(-75.97, -75.74), ylim = c(38.2467, 38.55), expand = F) +
+  geom_sf(data = rkm_lines) +
   geom_point(data = mdnr, aes(x = long_nudge, y = lat, color = year),
-             size = 5) +
+             size = 3) +
+  geom_sf_label(data = rkm_lines, aes(label = rkm), nudge_x = 0.02,
+                label.size = unit(0, 'line'), label.padding = unit(0.1, 'line')) +
+  coord_sf(xlim = c(-75.97, -75.74), ylim = c(38.2467, 38.55), expand = F) +
   geom_text(data = labels, aes(x = long, y = lat, label = labs)) +
   labs(x = NULL, y = NULL) +
   theme_bw() +
   theme(legend.position = 'none')
 
+
 upper <- ggplot() +
   geom_sf(data = nan) +
+  geom_sf(data = rkm_lines) +
+
+  geom_point(data = dnrec, aes(x = long, y = lat_nudge, color = year),
+             size = 3) +
+
+  geom_point(data = mdnr, aes(x = long_nudge, y = lat, color = year),
+             size = 3) +
+  geom_sf_label(data = rkm_lines, aes(label = rkm), nudge_x = 0.01,
+                label.size = unit(0, 'line'), label.padding = unit(0.1, 'line')) +
   coord_sf(label_axes = '-NE-',
            xlim = c(-75.83, -75.55), ylim = c(38.52, 38.7), expand = F) +
-  geom_point(data = dnrec, aes(x = long, y = lat_nudge, color = year),
-             size = 5) +
-  geom_point(data = mdnr, aes(x = long_nudge, y = lat, color = year),
-             size = 5) +
   geom_text(data = labels, aes(x = long, y = lat, label = labs),
              check_overlap = T) +
   labs(x = NULL, y = NULL, color = 'Year') +
@@ -106,17 +116,24 @@ inset_map <- crop_box %>%
 
 
 # Create data frame to hold labels
-river_labels <- data.frame(
+river_labels1 <- data.frame(
   long = c(-76.832102, -76.902022),
   lat = c(36.99268, 37.612137),
   labs = c('James', 'York')
+)
+river_labels2 <- data.frame(
+  long = -75.65,
+  lat = 38.46,
+  labs = 'Nanticoke'
 )
 
 
 inset <- ggplot() +
   geom_sf(data = inset_map, fill = 'gray') +
-  geom_text(data = river_labels, aes(x = long, y = lat, label = labs), angle = -45,
+  geom_text(data = river_labels1, aes(x = long, y = lat, label = labs), angle = -45,
             size = 8 / .pt) +
+  geom_text(data = river_labels2, aes(x = long, y = lat, label = labs), angle = 45,
+            size = 7 / .pt) +
   coord_sf(expand = F) +
   theme_void() +
   theme(plot.margin = margin(0, 0, 0, 0))
@@ -132,7 +149,7 @@ lower_inset <- lower + draw_plot(inset, -76.0113, 38.4, 0.2, 0.149)
 
 
 
-agg_png('manuscript/figures/map.png', res = 600,
+agg_png('manuscript/figures/map2.png', res = 600,
         width = 7.5, height = 3.65, scaling = .75, units = 'in')
 
 lower_inset + upper & theme(plot.margin = margin(0, 0, 0, 0))
@@ -144,3 +161,4 @@ lower_inset + upper & theme(plot.margin = margin(0, 0, 0, 0))
 
 
 dev.off()
+
