@@ -35,13 +35,14 @@ mdnr <- data.table::fread('manuscript/data/detections/sturgeon_detections.gz') %
   mutate(long_nudge = long + (year - 2016.5) / 250,
          year = as.factor(year))
 
-rkm_lines <- st_read('manuscript/data_derived/rkm_lines.gpkg')
+rkm_lines <- st_read('manuscript/data_derived/rkm_lines.gpkg') %>%
+  arrange(body, rkm)
 
 
 # Locations of labels
 labels <- data.frame(
-  long = c(-75.83, -75.77, -75.6, -75.65, -75.577, -75.635, -75.8),
-  lat = c(38.27, 38.63, 38.6, 38.55, 38.633, 38.64, 38.695),
+  long = c(-75.9, -75.77, -75.6, -75.65, -75.577, -75.636, -75.725),
+  lat = c(38.51, 38.63, 38.61, 38.55, 38.633, 38.64, 38.695),
   labs = c('Lower Nanticoke', 'Marshyhope Creek', 'Upper Nanticoke',
            'Broad Creek', 'Deep Creek', 'Seaford, DE', 'Federalsburg, MD')
 )
@@ -49,35 +50,58 @@ labels <- data.frame(
 
 
 # Plotting
-library(ggplot2); library(patchwork); library(ragg)
+library(ggplot2); library(ggrepel); library(patchwork); library(ragg)
 
-lower <- ggplot() +
+lower <-
+  ggplot() +
   geom_sf(data = nan) +
-  geom_sf(data = rkm_lines) +
+  geom_sf(data = rkm_lines, color = 'blue', lwd = 1) +
   geom_point(data = mdnr, aes(x = long_nudge, y = lat, color = year),
              size = 3) +
-  geom_sf_label(data = rkm_lines, aes(label = rkm), nudge_x = 0.02,
-                label.size = unit(0, 'line'), label.padding = unit(0.1, 'line')) +
-  coord_sf(xlim = c(-75.97, -75.74), ylim = c(38.2467, 38.55), expand = F) +
+  geom_label_repel(data = filter(rkm_lines, grepl('Nan', body), rkm <= 45),
+                   aes(label = rkm, geometry = geom),
+                   stat = 'sf_coordinates',
+                   nudge_x = -75.74 - st_coordinates(
+                     st_point_on_surface(
+                       filter(rkm_lines, grepl('Nan', body), rkm <= 45)))[,1],
+                   label.size = 0, label.padding = unit(0.1, 'line'),
+                   segment.color = 'blue') +
+  coord_sf(xlim = c(-75.96, -75.729), ylim = c(38.2467, 38.55), expand = F) +
   geom_text(data = labels, aes(x = long, y = lat, label = labs)) +
   labs(x = NULL, y = NULL) +
   theme_bw() +
   theme(legend.position = 'none')
 
 
-upper <- ggplot() +
+upper <-
+  ggplot() +
   geom_sf(data = nan) +
-  geom_sf(data = rkm_lines) +
+  geom_sf(data = rkm_lines, color = 'blue', lwd = 1) +
 
   geom_point(data = dnrec, aes(x = long, y = lat_nudge, color = year),
              size = 3) +
 
   geom_point(data = mdnr, aes(x = long_nudge, y = lat, color = year),
              size = 3) +
-  geom_sf_label(data = rkm_lines, aes(label = rkm), nudge_x = 0.01,
-                label.size = unit(0, 'line'), label.padding = unit(0.1, 'line')) +
+  geom_label_repel(data = filter(rkm_lines, !(grepl('Nan|Deep', body) & rkm <= 45)),
+                   aes(label = rkm, geometry = geom),
+                   stat = 'sf_coordinates',
+                   nudge_x = c(c(0.02, 0, 0),
+                               -75.85 - st_coordinates(
+                                 st_point_on_surface(
+                                   filter(rkm_lines, grepl('Mar', body))
+                                 ))[, 1],
+                               -75.545 - st_coordinates(
+                                 st_point_on_surface(
+                                   filter(rkm_lines, grepl('Nan', body), rkm > 45)
+                                 ))[, 1]),
+                   nudge_y = c(rep(0.017, 3),
+                               rep(0, 6),
+                               rep(0, 6)),
+                   label.size = 0, label.padding = unit(0.1, 'line'),
+                   segment.color = 'blue') +
   coord_sf(label_axes = '-NE-',
-           xlim = c(-75.83, -75.55), ylim = c(38.52, 38.7), expand = F) +
+           xlim = c(-75.845, -75.54), ylim = c(38.52, 38.7), expand = F) +
   geom_text(data = labels, aes(x = long, y = lat, label = labs),
              check_overlap = T) +
   labs(x = NULL, y = NULL, color = 'Year') +
@@ -102,7 +126,7 @@ inset_map <- st_read('manuscript/data/spatial/natural earth/ne_10m_coastline.shp
                      # turn box into well-known text
                      wkt_filter = st_as_text(crop_box))
 
-plot(inset_map$geometry)
+# plot(inset_map$geometry)
 
 
 # Use the coastline (a linestring) to cut up the bbox polygon
