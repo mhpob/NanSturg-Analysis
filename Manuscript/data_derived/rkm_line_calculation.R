@@ -54,13 +54,12 @@ rkms <- rkms %>%
 
 
 
-# Using for loop ----
+# Using for loop (slightly faster than purr; 6 v 10s)----
 buff_pts <- rkms %>%
   st_buffer(5000) %>%
   st_cast('POINT')
 
-buff_pts <- split(buff_pts, interaction(buff_pts$body, buff_pts$rkm))
-buff_pts <- buff_pts[sapply(buff_pts, function(x) length(st_geometry(x)) > 0)]
+buff_pts <- split(buff_pts, interaction(buff_pts$body, buff_pts$rkm), drop = T)
 
 
 line_ind <- vector('list', length(buff_pts))
@@ -68,22 +67,16 @@ rkm_lines <- vector('list', length(buff_pts))
 buff_lines <- vector('list', length(buff_pts))
 
 for(i in seq_along(buff_pts)){
-  line_ind[[i]] <- buff_pts[[i]] %>%
-    st_distance() %>%
-    as.matrix() %>%
-    apply(., 1, as.numeric)
-
-  # Drop duplicated values and zeroes (half the distance matrix)
-  line_ind[[i]][lower.tri(line_ind[[i]], diag = T)] <- NA
-
-  # Select indices of lines that span the whole circle (10 km, less 0.1 for precision issues)
-  line_ind[[i]] <- which(line_ind[[i]][, 1:(ncol(line_ind[[i]]) - 1)] >= 9999.9, arr.ind = T)
-
+  # There are 30 vertices per quarter of the circle (this can be changed, see ?sf::st_buffer)
+  ##  For a staight line through the center, we want to connect vertices
+  ##    opposite from one another (vertex 1 and 61 are a pair; vertex 2 and 62; etc.)
+  ##  We only need to calculate these one way (line connecting 1 to 61 only, no need for 61 to 1)
   buff_lines[[i]] <- mapply(
     function(a, b){
       st_cast(st_union(a, b), 'LINESTRING')
-    }, st_geometry(buff_pts[[i]][line_ind[[i]][,1],]),
-    st_geometry(buff_pts[[i]][line_ind[[i]][,2],]),
+    },
+    st_geometry(buff_pts[[i]][1:60,]),
+    st_geometry(buff_pts[[i]][61:120,]),
     SIMPLIFY = F) %>%
     st_sfc(crs = 32618) %>%
     st_as_sf()
@@ -125,7 +118,7 @@ row.names(rkm_lines) <- NULL
 
 
 
-# The above, but using {purrr}. ----
+# The above, but using {purrr} (slightly slower than FOR; 10 v 6s) ----
 library(tidyr); library(purrr)
 
 rkm_lines <- rkms %>%
