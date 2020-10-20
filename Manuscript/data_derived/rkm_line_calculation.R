@@ -89,6 +89,8 @@ for(i in seq_along(buff_pts)){
       2000))
 
   rkm_lines[[i]] <- buff_lines[[i]] %>%
+    ## note for future self: rkm_poly only has one polygon -- if there are more
+    ##  need to st_union first!!!
     st_intersection(rkm_poly) %>%
     st_cast('MULTILINESTRING') %>%
     st_cast('LINESTRING') %>%
@@ -170,6 +172,9 @@ rkm_lines <- rkms %>%
     rkm_crop = map(line, ~ st_crop(nan_poly, .x)),
 
     # Crop the lines by cropped Nanticoke polygon
+    ## note for future self: nan_poly only had one polygon -- if there are more
+    ##  need to st_union first!!!
+
     line = map2(line, rkm_crop, ~ st_intersection(.x, .y)),
 
     # After cropping, we can wind up with multiple (MULTILINESTING) or
