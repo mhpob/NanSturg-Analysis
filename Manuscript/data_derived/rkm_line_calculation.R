@@ -31,7 +31,7 @@ rkms <- flowline %>%
   group_by(body) %>%
   mutate(rkm = (length(body)-1):0) %>%
   # Select every 5th RKM
-  filter(rkm %in% seq(0, max(rkm), by = 5))
+  filter(rkm %in% seq(5, max(rkm), by = 5))
 
 
 nan_poly <- st_read('manuscript/data/spatial/NHD_H_0208_HU4_GDB.gdb',
@@ -54,7 +54,7 @@ rkms <- rkms %>%
 
 
 
-
+# Using for loop ----
 buff_pts <- rkms %>%
   st_buffer(5000) %>%
   st_cast('POINT')
@@ -115,26 +115,26 @@ rkm_lines <- bind_rows(rkm_lines)
 rkm_lines <- rkm_lines %>%
   select(body, rkm, x)
 
-plot(st_geometry(nan_poly))
-plot(rkm_lines, add = T, col = 'red', lwd = 2)
+
 
 rkm_lines <- rkm_lines %>%
   st_transform(4326)
 row.names(rkm_lines) <- NULL
 
-st_write(rkm_lines, 'manuscript/data_derived/rkm_lines.gpkg')
+# st_write(rkm_lines, 'manuscript/data_derived/rkm_lines.gpkg')
 
 
 
-# The above, but using {purrr}. I think the loop is faster.
-library(purrr)
+# The above, but using {purrr}. ----
+library(tidyr); library(purrr)
+
 rkm_lines <- rkms %>%
 
   # Drop extra columns
   select(body, rkm) %>%
 
   # "nest" (group) the points by body/rkm combination
-  tidyr::nest(geom = x) %>%
+  nest(geom = x) %>%
 
   mutate(
 
@@ -173,8 +173,11 @@ rkm_lines <- rkms %>%
     line = map(line, ~ st_sfc(.x, crs = 32618)),
     line = map(line, ~ st_as_sf(.x)),
 
-    # Crop the lines by the Nanticoke polygon
-    line = map(line, ~ st_intersection(.x, st_geometry(nan_poly))),
+    # Crop Nanticoke polygon for smaller intersection
+    rkm_crop = map(line, ~ st_crop(nan_poly, .x)),
+
+    # Crop the lines by cropped Nanticoke polygon
+    line = map2(line, rkm_crop, ~ st_intersection(.x, .y)),
 
     # After cropping, we can wind up with multiple (MULTILINESTING) or
     #   single (LINESTRING) line segments. To get them all to a LINESTRING, we need to cast
@@ -201,7 +204,7 @@ rkm_lines <- rkms %>%
   ) %>%
 
   # Extract the now-single line for each body/rkm combination
-  tidyr::unnest(line) %>%
+  unnest(line) %>%
 
   # Convert to simple features
   st_as_sf() %>%
