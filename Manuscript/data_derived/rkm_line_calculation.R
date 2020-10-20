@@ -17,28 +17,6 @@ flowline <- flowline %>%
 
 
 
-# Calculate RKM of Creek mouths ----
-## Find where the creeks meet the mainstem
-mouths <- flowline %>%
-  st_intersection() %>%
-  filter(n.overlaps == 2)
-
-## Find RKM of Creek mouths
-nan_split <- flowline %>%
-  filter(gnis_name == 'Nanticoke River') %>%
-
-  # Split Nanticoke by mouth locations
-  lwgeom::st_split(mouths) %>%
-
-  # Pull out the split sections
-  st_collection_extract('LINESTRING') %>%
-
-  # Find their lengths in km
-  st_length() %>%
-  units::set_units(km)
-
-
-
 # Break the line that makes up the flowline into points 1 km apart from each other ----
 rkms <- flowline %>%
   st_line_sample(density = 1/1000) %>%
