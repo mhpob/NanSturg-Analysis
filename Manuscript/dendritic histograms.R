@@ -150,7 +150,7 @@ dendr_sqrt <- function(month){
                               month(date.local) == month &
                               grepl('Nan', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 75, 3), color = 'white') +
+                   breaks = seq(0, 75, 3), color = 'white', size = 0) +
     labs(x = NULL, y = 'Detection count') +
     coord_trans(y = 'sqrt') +
     scale_y_continuous(breaks = 10 ^ (2:5),
@@ -162,9 +162,9 @@ dendr_sqrt <- function(month){
                                 month(date.local) == month &
                                 grepl('Marsh', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 30, 3), color = 'white') +
+                   breaks = seq(0, 30, 3), color = 'white', size = 0) +
     labs(x = NULL, y = NULL) +
-    coord_trans(y = 'sqrt') +
+    coord_trans(y = 'sqrt', clip = 'off') +
     scale_y_continuous(breaks = 10 ^ (2:4),
                        limits = c(0, 6e4), expand = c(0, 0),
                        labels = c('\n100', 10 ^ (3:4))) +
@@ -175,7 +175,7 @@ dendr_sqrt <- function(month){
                                 month(date.local) == month &
                                 grepl('Broad', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 12, 3), color = 'white') +
+                   breaks = seq(0, 12, 3), color = 'white', size = 0) +
     labs(x = NULL, y = NULL)+
     coord_trans(y = 'sqrt') +
     scale_y_continuous(breaks = 10 ^ (1:4),
@@ -188,7 +188,7 @@ dendr_sqrt <- function(month){
                                month(date.local) == month &
                                grepl('Deep', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 3, 3), color = 'white') +
+                   breaks = seq(0, 3, 3), color = 'white', size = 0) +
     labs(x = NULL, y = NULL) +
     coord_trans(y = 'sqrt') +
     scale_y_continuous(breaks = 10 ^ (1:4),
@@ -211,36 +211,48 @@ dendr_sqrt <- function(month){
     theme_bw() &
     theme(plot.margin = margin(0, 3, 0, 0),
           axis.text = element_text(size = 6, vjust = 0.25),
-          axis.title.y = element_text(size = 7))
+          axis.title.y = element_text(size = 7),
+          axis.line.x.bottom = element_line(color = 'blue'))
 }
 
 library(ragg)
-agg_png('manuscript/figures/dendr_hist/sqrt_5may2.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_5may2.png', width = 1950, height = 1290,
         res = 600)
 dendr_sqrt(5)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_6jun2.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_6jun2.png', width = 1950, height = 1290,
         res = 600)
 dendr_sqrt(6)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_7jul2.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_7jul2.png', width = 1950, height = 1290,
         res = 600)
 dendr_sqrt(7)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_8aug2.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_8aug2.png', width = 1950, height = 1290,
         res = 600)
 dendr_sqrt(8)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_9sept2.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_9sept2.png', width = 1950, height = 1290,
         res = 600)
 dendr_sqrt(9)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_10oct2.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_10oct2.png', width = 1950, height = 1290,
         res = 600)
 dendr_sqrt(10)
+dev.off()
+
+
+
+
+
+
+setEPS()
+postscript('manuscript/figures/dendr_hist/test.eps', width = 3.25, height = 2.15,
+           horizontal = FALSE, paper = "special")
+dendr_sqrt(9)
 dev.off()
