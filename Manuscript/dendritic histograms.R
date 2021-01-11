@@ -1,8 +1,8 @@
 library(data.table)
 
 # Load receiver rkm
-mdnr <- fread('manuscript/data/mddnr_receiver_rkm.csv')
-dnrec <- fread('manuscript/data/dnrec_receiver_rkm.csv')
+mdnr <- fread('manuscript/data_derived/mddnr_receiver_rkm.csv')
+dnrec <- fread('manuscript/data_derived/dnrec_receiver_rkm.csv')
 dnrec[, ':='('station' = site,
              site = NULL,
              year = NULL)]
@@ -215,32 +215,32 @@ dendr_sqrt <- function(month){
 }
 
 library(ragg)
-agg_png('manuscript/figures/dendr_hist/sqrt_5may.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_5may2.png', width = 3000, height = 1500,
         res = 600)
 dendr_sqrt(5)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_6jun.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_6jun2.png', width = 3000, height = 1500,
         res = 600)
 dendr_sqrt(6)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_7jul.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_7jul2.png', width = 3000, height = 1500,
         res = 600)
 dendr_sqrt(7)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_8aug.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_8aug2.png', width = 3000, height = 1500,
         res = 600)
 dendr_sqrt(8)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_9sept.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_9sept2.png', width = 3000, height = 1500,
         res = 600)
 dendr_sqrt(9)
 dev.off()
 
-agg_png('manuscript/figures/dendr_hist/sqrt_10oct.png', width = 3000, height = 1500,
+agg_png('manuscript/figures/dendr_hist/sqrt_10oct2.png', width = 3000, height = 1500,
         res = 600)
 dendr_sqrt(10)
 dev.off()
