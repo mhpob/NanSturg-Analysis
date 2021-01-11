@@ -1,6 +1,6 @@
 library(data.table); library(lubridate)
 
-mobile <- fread('data/marshnan_data.csv',
+mobile <- fread('manuscript/data/marshnan_data.csv',
                 col.names = function(.) tolower(gsub('[ .]', '_', .)))
 mobile <- mobile[type == 'B']
 mobile[, wk := floor_date(mdy(date), 'week')]
@@ -12,6 +12,34 @@ mobile[, ':='(variable = fcase(variable == 'depth', 'Bottom depth (m)',
                                variable == 'do_pct', 'Dissolved Oxygen (%)'),
               wk = as.factor(strftime(wk, format = '%b %d')),
               detections = as.factor(detections))]
+
+
+library(lme4)
+dep <- glmer(value ~ detections + (1|cruise),
+            data = mobile,
+            subset = mobile$variable == 'Bottom depth (m)',
+            family = Gamma())
+drop1(dep, test = 'Chisq')
+
+
+temp <- lmer(value ~ detections + (1|cruise),
+             data = mobile,
+             subset = mobile$variable == 'Bottom temperature (°C)')
+drop1(temp, test = 'Chisq')
+
+
+do <- lmer(value ~ detections + (1|cruise),
+           data = mobile,
+           subset = mobile$variable == 'Dissolved Oxygen (%)')
+drop1(do, test = 'Chisq')
+
+
+sal <- glmer(value ~ detections + (1|cruise),
+             data = mobile,
+             subset = mobile$variable == 'Salinity',
+             family = Gamma())
+drop1(sal, test = 'Chisq')
+
 
 library(ggplot2)
 
