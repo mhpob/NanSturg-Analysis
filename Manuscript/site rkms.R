@@ -14,6 +14,7 @@ flowline <- st_read('manuscript/data/spatial/NHD_H_0208_HU4_GDB.gdb',
 names(flowline) <- tolower(names(flowline))
 st_geometry(flowline) <- 'shape'
 
+
 ##  Merge different within-river secctions into one.
 flowline <- flowline %>%
   st_zm() %>%
