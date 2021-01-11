@@ -1,18 +1,29 @@
 library(dplyr); library(sf)
 
 # Read and manipulate flowline data ---
-flowline <- st_read('manuscript/data/spatial/nanticoke_flowline.gpkg')
+flowline <- st_read('manuscript/data/spatial/NHD_H_0208_HU4_GDB.gdb',
+                    layer = 'NHDFlowline',
+                    query = "select *
+                    from NHDFlowline
+                    where (ReachCode like '02080109%')
+                    and ((GNIS_Name like '%Nanticoke%') or
+                    (GNIS_Name like 'Marshyhope Creek') or
+                    (GNIS_Name like 'Broad Creek') or
+                    (GNIS_Name like 'Deep Creek'))")
 
+names(flowline) <- tolower(names(flowline))
+st_geometry(flowline) <- 'shape'
 
 ##  Merge different within-river secctions into one.
 flowline <- flowline %>%
+  st_zm() %>%
 
   # Combine different sections into one object
   group_by(gnis_name) %>%
-  summarize(geom = st_combine(geom), .groups = 'keep') %>%
+  summarize(shape = st_combine(shape), .groups = 'keep') %>%
 
   # Merge within-object lines together
-  summarize(geom = st_line_merge(geom)) %>%
+  summarize(shape = st_line_merge(shape)) %>%
   st_transform(32618)
 
 
