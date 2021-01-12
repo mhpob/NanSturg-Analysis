@@ -45,24 +45,25 @@ dendr_sqrt <- function(month){
                               month(date.local) == month &
                               grepl('Nan', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 75, 3), color = 'white', size = 0) +
-    labs(x = NULL, y = 'Detection count') +
+                   breaks = seq(0, 75, 3), color = 'white', size = 1) +
+    # scale_size_manual(values = 2) +
+    labs(x = NULL, y = NULL) +
     coord_trans(y = 'sqrt') +
-    scale_y_continuous(breaks = 10 ^ (2:5),
+    scale_y_continuous(breaks = 10 ^ (3:5),
                        limits = c(0, 1.5e5), expand = c(0, 0),
-                       labels = c('\n100', 10 ^ (3:4), 1e5)) +
+                       labels = c('10\u00B3', '10\u2074', '10\u2075')) +
     scale_x_continuous(limits = c(0, 75), expand = c(0, 0))
 
   marsh <- ggplot(data = test[!is.na(lat) &
                                 month(date.local) == month &
                                 grepl('Marsh', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 30, 3), color = 'white', size = 0) +
+                   breaks = seq(0, 30, 3), color = 'white', size = 1) +
     labs(x = NULL, y = NULL) +
     coord_trans(y = 'sqrt', clip = 'off') +
-    scale_y_continuous(breaks = 10 ^ (2:4),
+    scale_y_continuous(breaks = 10 ^ (3:4),
                        limits = c(0, 6e4), expand = c(0, 0),
-                       labels = c('\n100', 10 ^ (3:4))) +
+                       labels = c('10\u00B3', '10\u2074')) +
     scale_x_continuous(limits = c(0, 30), expand = c(0, 0))
 
 
@@ -70,12 +71,12 @@ dendr_sqrt <- function(month){
                                 month(date.local) == month &
                                 grepl('Broad', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 12, 3), color = 'white', size = 0) +
+                   breaks = seq(0, 12, 3), color = 'white', size = 1) +
     labs(x = NULL, y = NULL)+
     coord_trans(y = 'sqrt') +
-    scale_y_continuous(breaks = 10 ^ (1:4),
+    scale_y_continuous(breaks = 10 ^ (2:4),
                        limits = c(0, 1e4), expand = c(0, 0),
-                       labels = c('\n10', 10 ^ (2:4))) +
+                       labels = c('10\u00B2', '10\u00B3', '10\u2074')) +
     scale_x_continuous(limits = c(0, 12), expand = c(0, 0))
 
 
@@ -83,36 +84,41 @@ dendr_sqrt <- function(month){
                                month(date.local) == month &
                                grepl('Deep', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 3, 3), color = 'white', size = 0) +
+                   breaks = seq(0, 3, 3), color = 'white', size = 1) +
     labs(x = NULL, y = NULL) +
     coord_trans(y = 'sqrt') +
-    scale_y_continuous(breaks = 10 ^ (1:4),
+    scale_y_continuous(breaks = 10 ^ (2:4),
                        limits = c(0, 1e4), expand = c(0, 0),
-                       labels = c('\n10', 10 ^ (2:4))) +
+                       labels = c('10\u00B2', '10\u00B3', '10\u2074')) +
     scale_x_continuous(limits = c(0, 3), expand = c(0, 0))
 
-
+  month_label <- grid::textGrob(month.name[month],
+                                x = unit(0.05, 'npc'),
+                                y = unit(0.95, 'npc'),
+                                just = c(0, 1),
+                                gp = grid::gpar(fontsize = 18))
 
   design <- c(
     area(t = 1, r = 100, b = 33, l = 62),
     area(t = 34, r = 100, b = 66, l = 0),
     area(t = 67, r = 92, b = 99, l = 81),
-    area(t = 67, r = 100, b = 99, l = 94)
+    area(t = 67, r = 100, b = 99, l = 94),
+    area(t = 1, r = 25, b = 25, l = 0)
   )
 
-  marsh + nan + broad + deep + plot_layout(design = design) &
-    # plot_annotation(title = month.name[month],
-    #                 theme = theme(plot.title = element_text(size = 18))) &
+  marsh + nan + broad + deep + month_label +
+    plot_layout(design = design) &
     theme_bw() &
-    theme(plot.margin = margin(0, 3, 0, 0),
-          axis.text = element_text(size = 6, vjust = 0.25),
-          axis.title.y = element_text(size = 7),
-          axis.line.x.bottom = element_line(color = 'blue'))
+    theme(plot.margin = margin(1, 3, 1, 1),
+          axis.text = element_text(size = 10, vjust = 0.25),
+          # axis.title.y = element_text(size = 7),
+          axis.line.x.bottom = element_line(color = 'blue')) &
+    plot_annotation(theme = theme(plot.background = element_rect(color = 'black')))
 }
 
 library(ragg)
 agg_png('manuscript/figures/dendr_hist/test.png', width = 3900, height = 3870,
-        res = 600)
+        res = 600, scaling = 0.75)
 plot_grid(dendr_sqrt(5), dendr_sqrt(6),
           dendr_sqrt(7), dendr_sqrt(8),
           dendr_sqrt(9), dendr_sqrt(10),
