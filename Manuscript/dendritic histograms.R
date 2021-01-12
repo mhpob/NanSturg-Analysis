@@ -111,10 +111,21 @@ dendr_sqrt <- function(month){
 }
 
 library(ragg)
-agg_png('manuscript/figures/dendr_hist/sqrt_5may2.png', width = 1950, height = 1290,
+agg_png('manuscript/figures/dendr_hist/test.png', width = 3900, height = 3870,
         res = 600)
-dendr_sqrt(5)
+plot_grid(dendr_sqrt(5), dendr_sqrt(6),
+          dendr_sqrt(7), dendr_sqrt(8),
+          dendr_sqrt(9), dendr_sqrt(10),
+          nrow = 3)
 dev.off()
+
+
+
+
+
+
+
+
 
 agg_png('manuscript/figures/dendr_hist/sqrt_6jun2.png', width = 1950, height = 1290,
         res = 600)
