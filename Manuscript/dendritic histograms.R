@@ -45,7 +45,7 @@ dendr_sqrt <- function(month){
                               month(date.local) == month &
                               grepl('Nan', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 75, 3), color = 'white', size = 1) +
+                   breaks = seq(0, 75, 3), color = 'white', size = 0.3) +
     # scale_size_manual(values = 2) +
     labs(x = NULL, y = NULL) +
     coord_trans(y = 'sqrt') +
@@ -58,7 +58,7 @@ dendr_sqrt <- function(month){
                                 month(date.local) == month &
                                 grepl('Marsh', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 30, 3), color = 'white', size = 1) +
+                   breaks = seq(0, 30, 3), color = 'white', size = 0.3) +
     labs(x = NULL, y = NULL) +
     coord_trans(y = 'sqrt', clip = 'off') +
     scale_y_continuous(breaks = 10 ^ (3:4),
@@ -71,7 +71,7 @@ dendr_sqrt <- function(month){
                                 month(date.local) == month &
                                 grepl('Broad', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 12, 3), color = 'white', size = 1) +
+                   breaks = seq(0, 12, 3), color = 'white', size = 0.3) +
     labs(x = NULL, y = NULL)+
     coord_trans(y = 'sqrt') +
     scale_y_continuous(breaks = 10 ^ (2:4),
@@ -84,7 +84,7 @@ dendr_sqrt <- function(month){
                                month(date.local) == month &
                                grepl('Deep', body),]) +
     geom_histogram(aes(x = rkm_body_mouth, group = transmitter),
-                   breaks = seq(0, 3, 3), color = 'white', size = 1) +
+                   breaks = seq(0, 3, 3), color = 'white', size = 0.3) +
     labs(x = NULL, y = NULL) +
     coord_trans(y = 'sqrt') +
     scale_y_continuous(breaks = 10 ^ (2:4),
@@ -103,7 +103,7 @@ dendr_sqrt <- function(month){
     area(t = 34, r = 100, b = 66, l = 0),
     area(t = 67, r = 92, b = 99, l = 81),
     area(t = 67, r = 100, b = 99, l = 94),
-    area(t = 1, r = 25, b = 25, l = 0)
+    area(t = 1, r = 60, b = 25, l = 0)
   )
 
   marsh + nan + broad + deep + month_label +
@@ -116,9 +116,9 @@ dendr_sqrt <- function(month){
     plot_annotation(theme = theme(plot.background = element_rect(color = 'black')))
 }
 
-library(ragg)
-agg_png('manuscript/figures/dendr_hist/test.png', width = 3900, height = 3870,
-        res = 600, scaling = 0.75)
+library(ragg); library(cowplot)
+agg_tiff('manuscript/figures/dendr_hist/figure3_hq.tiff', width = 7800, height = 7740,
+        res = 1200, scaling = 0.75, compression = 'lzw')
 plot_grid(dendr_sqrt(5), dendr_sqrt(6),
           dendr_sqrt(7), dendr_sqrt(8),
           dendr_sqrt(9), dendr_sqrt(10),
