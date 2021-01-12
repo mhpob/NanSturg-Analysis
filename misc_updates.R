@@ -11,6 +11,16 @@ names(dnr) <- c('time', 'temp', 'ph', 'do', 'turb')
 dnr <- reshape2::melt(dnr, id.vars = 'time',
                       variable.name = 'var', value.name = 'val')
 
+rec_wt <- read.csv('p:/obrien/biotelemetry/nanticoke/vps data/receiver/VR2W_124474_20171006_1.csv') %>%
+  rename_with(function(.) tolower(gsub('\\.\\.|ï', '', .))) %>%
+  filter(grepl(16250, transmitter)) %>%
+  mutate(date = ymd_hms(date.and.timeutc.),
+         WT = 0.1569 * sensor.value - 5,
+         floor = floor_date(date, unit = 'hour')) %>%
+  group_by(floor) %>%
+  summarize(mean = mean(WT),
+            sd = sd(WT))
+
 env <- rbind(sharp, dnr)
 
 env <- env %>%
@@ -23,7 +33,7 @@ fish_pos <- read.csv(
   rename_all(tolower) %>%
   filter(grepl('^\\d', transmitter)) %>%
   mutate(datetime = lubridate::ymd_hms(datetime),
-         datefloor = lubridate::floor_date(datetime, '6hour'))
+         datefloor = lubridate::floor_date(datetime, 'hour'))
 
 pdat <- fish_pos%>%
   distinct(datefloor, transmitter) %>%
@@ -46,6 +56,37 @@ ggplot() + geom_rect(data = pdat2, aes(xmin = as.POSIXct(rise, origin="1970-01-0
   labs(x = NULL, y = 'Fish Detected/6hr') +
   theme_bw()
 
+
+det_plot <- ggplot() +
+  geom_col(data = pdat, aes(x = datefloor, y = `n()`)) +
+  scale_x_datetime(limits = as.POSIXct(c('2017-08-30', '2017-10-04')),
+                   expand = c(0, 0)) +
+  coord_cartesian(ylim = c(0, 7), expand = F) +
+  labs(x = NULL, y = paste('Fish detected\n(per hour)')) +
+  theme_bw() +
+  theme(axis.text.x = element_blank(),
+        plot.margin = unit(c(0,0,1,1), 'mm'))
+
+wt_plot <- ggplot() +
+  geom_line(data = rec_wt, aes(x = floor, y = mean)) +
+  ylim(c(17, 25.5)) +
+  labs(x = NULL, y = paste('Water temperature\n(°C)')) +
+  scale_x_datetime(limits = as.POSIXct(c('2017-08-30', '2017-10-04')),
+                   expand = c(0, 0)) +
+  theme_bw() +
+  theme(plot.margin = unit(c(0, 0, 0, 1), 'mm'))
+
+library(patchwork); library(ragg)
+
+agg_tiff('manuscript/figures/figure4.tif',
+         width = 1950,
+         height = 985,
+         res = 600,
+         compression = 'lzw',
+         scaling = 0.5)
+det_plot / wt_plot +
+  plot_layout(heights = c(2, 1))
+dev.off()
 
 
 
