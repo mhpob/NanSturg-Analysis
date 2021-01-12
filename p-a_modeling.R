@@ -98,7 +98,7 @@ pa_trim <- bind_rows(pa_trim, .id = 'transmitter')
 xtabs(data = pa_trim, ~ val + p_a, subset = (var == 'tide'))
 xtabs(data = pa_trim, ~ val + p_a, subset = (var == 'sun'))
 ggplot() +
-  geom_bar(data = filter(pa_tide, p_a == 1, var == 'tide'),
+  geom_bar(data = filter(pa_trim, p_a == 1, var == 'tide'),
            aes(x = transmitter, fill = val), position = 'fill')
 
 
@@ -120,11 +120,12 @@ tide_means <- data.frame(stage = summary(tide_means$lsmeans)$val,
                          tukey = c('A', 'B', 'AB', 'A'))
 
 library(ggplot2)
-ggplot(data = tide_means, aes(x = stage, y = mean)) +
+tide_plot <- ggplot(data = tide_means, aes(x = stage, y = mean)) +
   geom_col() +
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2) +
-  geom_text(aes(label = tukey, y = upper + 0.02)) +
+  geom_text(aes(label = tukey, y = upper + 0.1)) +
   labs(x = NULL, y = 'Probability of presence') +
+  coord_cartesian(ylim = c(0, 1), expand = F) +
   scale_x_discrete(limits = c('high', 'ebb', 'low', 'flood'),
                    labels = c('High', 'Ebb', 'Low', 'Flood')) +
   theme_bw()
@@ -142,14 +143,31 @@ sun_means <- data.frame(stage = summary(sun_means$lsmeans)$val,
                          upper = logit2p(summary(sun_means$lsmeans)$asymp.UCL),
                          tukey = c('A', 'B', 'A', 'C'))
 
-ggplot(data = sun_means, aes(x = stage, y = mean)) +
+sun_plot <- ggplot(data = sun_means, aes(x = stage, y = mean)) +
   geom_col() +
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2) +
-  geom_text(aes(label = tukey, y = upper + 0.02)) +
-  labs(x = NULL, y = 'Probability of presence') +
+  geom_text(aes(label = tukey, y = upper + 0.1)) +
+  labs(x = NULL, y = NULL) +
+  coord_cartesian(ylim = c(0, 1), expand = F) +
   scale_x_discrete(labels = c('Dawn', 'Day', 'Dusk', 'Night')) +
   theme_bw()
 
+library(patchwork)
+
+tide_plot + sun_plot
+
+
+library(ragg)
+agg_tiff('manuscript/figures/figure5.tif',
+         width = 1950,
+         height = 985,
+         res = 600,
+         compression = 'lzw',
+         scaling = 0.75)
+
+tide_plot + sun_plot
+
+dev.off()
 
 names(sun_lookup) <- c('period', 'start_s', 'end_s', 'rng_s')
 names(tide_lookup) <- c('stage', 'start_t', 'end_t', 'rng_t')
