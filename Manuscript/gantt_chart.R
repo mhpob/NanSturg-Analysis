@@ -16,7 +16,7 @@ tasks[, ':='(system = factor(system,
                                           'Telemetry positioning'))))]
 
 
-agg_tiff('manuscript/figures/gantt2.tif',
+agg_tiff('manuscript/figures/gantt3.tif',
         width = 2250, height = 1406, res = 600, scaling = 0.5,
         compression = 'lzw')
 
@@ -26,7 +26,7 @@ ggplot(data = tasks) +
                    x = start, xend = end, color = system),
                  size = 3) +
   scale_y_continuous(breaks = 1:9, labels = levels(tasks$activity)) +
-  scale_color_viridis_d(direction = -1, option = 'cividis') +
+  scale_color_viridis_d(end = 0.8, direction = -1, option = 'A') +
   labs(x = NULL, y = NULL, color = NULL) +
   theme_bw() +
   theme(panel.grid.minor = element_blank(),
