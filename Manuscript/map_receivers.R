@@ -41,8 +41,14 @@ rkm_lines <- st_read('manuscript/data_derived/rkm_lines.gpkg') %>%
 
 # Locations of labels
 river_labels <- data.frame(
-  long = c(-75.825, -75.77, -75.7, -75.625, -75.58),
-  lat = c(38.255, 38.63, 38.61, 38.557, 38.633),
+  long = c(-75.825,
+           #-75.77, -75.7,
+           -75.8, -75.67,
+           -75.625, -75.58),
+  lat = c(38.255,
+          # 38.63, 38.61,
+          38.532, 38.532,
+          38.557, 38.633),
   labs = c('Lower Nanticoke', 'Marshyhope Creek', 'Upper Nanticoke',
            'Broad Creek', 'Deep Creek')
 )
@@ -71,7 +77,8 @@ lower <-
                    label.size = 0, label.padding = unit(0.1, 'line'),
                    segment.color = 'blue') +
   coord_sf(xlim = c(-75.96, -75.729), ylim = c(38.2467, 38.55), expand = F) +
-  geom_text(data = labels, aes(x = long, y = lat, label = labs)) +
+  geom_text(data = river_labels[river_labels$labs == 'Lower Nanticoke',],
+            aes(x = long, y = lat, label = labs)) +
   labs(x = NULL, y = NULL) +
   theme_bw() +
   theme(legend.position = 'none')
@@ -112,7 +119,10 @@ upper <-
                    nudge_x = c(-0.04, 0.05), nudge_y = c(0.01, -0.01),
                    label.size = 0, label.padding = unit(0.1, 'line')) +
   labs(x = NULL, y = NULL, color = 'Year') +
-  theme_bw()
+  theme_bw() +
+  theme(legend.position = c(0.75, 0.96),
+        legend.margin = margin(0, 0, 0, 0)) +
+  guides(color = guide_legend(direction = 'horizontal'))
 
 
 
@@ -164,7 +174,9 @@ inset <- ggplot() +
   geom_text(data = river_labels1, aes(x = long, y = lat, label = labs), angle = -45,
             size = 8 / .pt) +
   geom_text(data = river_labels2, aes(x = long, y = lat, label = labs), angle = 45,
-            size = 7 / .pt) +
+            size = 6 / .pt) +
+  annotate('rect', xmin = -75.96, xmax = -75.54, ymin = 38.2467, ymax = 38.7,
+           fill = NA, color = 'black', linetype = 'dotted') +
   coord_sf(expand = F) +
   theme_void() +
   theme(plot.margin = margin(0, 0, 0, 0))
@@ -176,7 +188,7 @@ lower_inset <- lower + draw_plot(inset, -76, 38.399, 0.2, 0.149)
 
 
 
-agg_png('manuscript/figures/map2.png', res = 600,
+agg_png('manuscript/figures/map3.png', res = 600,
         width = 7.5, height = 3.65, scaling = .75, units = 'in')
 
 lower_inset + upper & theme(plot.margin = margin(0, 0, 0, 0))
