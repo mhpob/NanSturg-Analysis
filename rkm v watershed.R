@@ -1,18 +1,14 @@
 library(ggplot2); library(ragg)
 
-# tribs <- read.csv('manuscript/data/fig1data.csv')
-tribs <- read.csv('manuscript/data/fig1data_a1match.csv')
+tribs <- read.csv('manuscript/data/fig1data.csv')
 
 
-agg_tiff('manuscript/figures/figure1_a1match.tif',
+agg_tiff('manuscript/figures/figure1_final.tif',
          width = 2250, height = 1721, res = 600, scaling = 0.5,
          compression = 'lzw')
 
 ggplot(data = tribs, aes(x = river.km, y = watershed, label = Abbreviation,
-                         color = ifelse(grepl(
-                           # 'NAN',
-                           '^N-',
-                           Abbreviation), T, F))) +
+                         color = ifelse(grepl('^NR', Abbreviation), T, F))) +
   geom_point(show.legend =  F) +
   ggrepel::geom_text_repel(show.legend =  F) +
   scale_color_manual(values = c('black', 'blue')) +
