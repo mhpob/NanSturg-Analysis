@@ -27,24 +27,26 @@ spec_sheet[, c('Name', 'Latitude', 'Longitude') :=
            .SDcols = c('Name', 'Latitude', 'Longitude')]
 
 spec_sheet <- spec_sheet[!is.na(Name)]
+spec_sheet <- spec_sheet[-c(23,24),]
 setnames(spec_sheet, tolower)
 
 
 #ARG playing with this
-vps[transmitter %in% spec_sheet$device]
+vps <- vps[transmitter %in% spec_sheet$device]
 ##
 
 
-vps <- vps[spec_sheet[grepl('VR2W', device)], on = c(receiver = 'device'),
-         allow.cartesian = T]
-vps <- vps[date_and_time__utc_ %between% list(`start time`, `end time`)]
+vps <- vps[, c(1:3, 6:7)][spec_sheet[grepl('VR2W', device)], on = c(receiver = 'device')]
+# vps <- vps[date_and_time__utc_ >= '2017-09-08 00:00:00']
 
 
 vps[, ':='(trans_from = transmitter,
          station_to = name,
-         lat_to = i.latitude,
-         lon_to = i.longitude)]
-vps[, c(2:19) := NULL]
+         lat_to = latitude,
+         lon_to = longitude,
+         name = NULL,
+         latitude = NULL,
+         longitude = NULL)]
 
 vps <- vps[spec_sheet[grepl('A69', device), .(name, device, latitude, longitude)],
           on = c(trans_from = 'device')]
@@ -52,7 +54,7 @@ vps <- vps[spec_sheet[grepl('A69', device), .(name, device, latitude, longitude)
 setnames(vps, c('date_and_time__utc_', 'name', 'latitude', 'longitude'),
          c('time','station_from', 'lat_from', 'lon_from'))
 vps[, trans_from := NULL]
-vps <- unique(vps, by = c('time', 'station_to', 'station_from'))
+# vps <- unique(vps, by = c('time', 'station_to', 'station_from'))
 
 library(sf)
 rec_dists <- st_as_sf(spec_sheet,
@@ -69,7 +71,7 @@ rec_dists <- melt(rec_dists, id.vars = 'station_from',
            variable.name = 'station_to', value.name = 'distance')
 rec_dists <- unique(rec_dists, by = c('station_from', 'station_to'))
 
-to_from <- vps[rec_dists, on = c('station_from', 'station_to'), nomatch = 0]
+# to_from <- vps[rec_dists, on = c('station_from', 'station_to')]
 
 
 
@@ -91,57 +93,89 @@ tide_lookup <- rbind(tide_lookup,
 tide_lookup <- tide_lookup[complete.cases(tide_lookup), .(stage, start, end)]
 
 #### join tides
-to_from[, fake_end := time]
+# to_from[, fake_end := time]
+vps[, fake_end := time]
 
-setkey(to_from, time, fake_end)
+# setkey(to_from, time, fake_end)
+setkey(vps, time, fake_end)
 setkey(tide_lookup, start, end)
 
-to_from <- foverlaps(to_from, tide_lookup)[, fake_end := NULL]
+# to_from <- foverlaps(to_from, tide_lookup)[, fake_end := NULL]
+vps <- foverlaps(vps, tide_lookup)[, fake_end := NULL]
 
-to_from[, id := rleid(start)]
+# to_from[, id := rleid(start)]
+vps[, id := rleid(start)]
+
+
+
+
+
+
+k <- to_from[!id %in% c(1, 301), .N, by = .(id, stage, distance)]
+
+m1 <- glm(N ~ stage*distance, family = 'poisson', data = k)
+
+m2 <- glm(N ~ stage + distance, family = 'poisson', data = k)
+
+anova(m1, m2, test = 'LRT')
+
 
 ## calc det freq
 
 
-k <- split(to_from, to_from$id)
 
-p <- lapply(k, function(.) unique(., by = c('station_to', 'station_from'))[
-  , .(station_from, lat_from, lon_from, station_to, lat_to, lon_to)])
-p <- rbindlist(p, idcol = 'id')
-p[, id := as.integer(id)]
 
+
+
+
+
+
+
+
+
+
+
+k <- split(vps, vps$id)
+
+# p <- lapply(k, function(.) unique(., by = c('station_to', 'station_from'))[
+#   , .(station_from, lat_from, lon_from, station_to, lat_to, lon_to)])
+# p <- rbindlist(p, idcol = 'id')
+# p[, id := as.integer(id)]
+#
 k <- lapply(k, function(.) xtabs(~ station_from + station_to, data = .))
 
-k <- lapply(k, function(.) .[rownames(.) %in% colnames(.), colnames(.) %in% rownames(.)])
-
-
-k <- lapply(k, function(.) round(./diag(.), 2))
-
-k <- lapply(k, data.table)
-k <- rbindlist(k, idcol = 'id')
-k[, id := as.integer(id)]
-
-j <- p[k, on = c('id', 'station_from', 'station_to')]## doesnt work, need two stages metinks.
-
-
-k <- k[unique(to_from, by = 'id')[, .(stage, id)], on = 'id']
-
-
-p <- unique(to_from, by = c('id', 'station_from', 'station_to'))
-
-
-pp <- p[k, on = c('id', 'stage', 'station_from', 'station_to')]
 
 
 
+kk <- lapply(k, function(.) .[rownames(.) %in% colnames(.), colnames(.) %in% rownames(.)])
+kk <- lapply(kk, function(x){
+  diag(x) <- apply(x, 1, max)
+  x
+})
 
-k <- k[rec_dists, on = c('station_from', 'station_to'), nomatch = 0]
 
-kk <- k[unique(to_from, by = c('station_to', 'station_from'))[
-  , .(station_from, lat_from, lon_from, station_to, lat_to, lon_to)],
-  on = c('station_from', 'station_to')]
+
+kk <- lapply(kk, function(.) round(./diag(.), 2))
+
+kk <- lapply(kk, data.table)
+
+kk <- lapply(kk, function(.){
+  .[rec_dists[station_from != 'Ref' & station_to != 'Ref'],
+    on = c('station_from', 'station_to')][is.na(N), N := 0]
+
+})
 
 
 
 
 
+kk <- rbindlist(kk, idcol = 'id')
+kk[, id := as.integer(id)]
+
+kkk <- kk[unique(vps, by = 'id')[, .(stage, id)], on = 'id']
+
+
+m1 <- glm(N ~ stage*distance, family = 'binomial', data = kkk)
+m2 <- glm(N ~ stage+distance, family = 'binomial', data = kkk)
+
+anova(m1, m2, test = 'LRT')
