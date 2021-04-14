@@ -24,15 +24,15 @@ nan <- st_read('manuscript/data/spatial/NHD_H_0208_HU4_GDB.gdb',
 
 # Receiver sites
 dnrec <- read.csv('manuscript/data/detections/past receiver locations.csv') %>%
-  filter(year < 2019 & year > 2014) %>%
-  mutate(lat_nudge = lat + (year - 2016.5) / 300,
+  filter(year < 2019 & year >= 2014) %>%
+  mutate(lat_nudge = lat + (year - 2016) / 300,
          year = as.factor(year))
 
 mdnr <- data.table::fread('manuscript/data/detections/sturgeon_detections.gz') %>%
   mutate(year = lubridate::year(date.local)) %>%
-  filter(year < 2019 & year > 2014) %>%
+  filter(year < 2019 & year >= 2014) %>%
   distinct(station, lat, long, year) %>%
-  mutate(long_nudge = long + (year - 2016.5) / 250,
+  mutate(long_nudge = long + (year - 2016) / 250,
          year = as.factor(year))
 
 rkm_lines <- st_read('manuscript/data_derived/rkm_lines.gpkg') %>%
@@ -54,7 +54,7 @@ river_labels <- data.frame(
 )
 city_labels <- data.frame(
   long = c(-75.615, -75.77),
-  lat = c(38.64, 38.695),
+  lat = c(38.64, 38.692),
   labs = c('Seaford, DE', 'Federalsburg, MD')
 )
 
@@ -68,6 +68,7 @@ lower <-
   geom_sf(data = rkm_lines, color = 'blue', lwd = 1) +
   geom_point(data = mdnr, aes(x = long_nudge, y = lat, color = year),
              size = 3) +
+  scale_color_viridis_d(option = 'turbo') +
   geom_label_repel(data = filter(rkm_lines, grepl('Nan', body), rkm <= 45),
                    aes(label = rkm, geometry = geom),
                    stat = 'sf_coordinates',
@@ -94,6 +95,7 @@ upper <-
 
   geom_point(data = mdnr, aes(x = long_nudge, y = lat, color = year),
              size = 3) +
+  scale_color_viridis_d(option = 'turbo') +
   geom_label_repel(data = filter(rkm_lines, !(grepl('Nan|Deep', body) & rkm <= 45)),
                    aes(label = rkm, geometry = geom),
                    stat = 'sf_coordinates',
@@ -120,7 +122,7 @@ upper <-
                    label.size = 0, label.padding = unit(0.1, 'line')) +
   labs(x = NULL, y = NULL, color = 'Year') +
   theme_bw() +
-  theme(legend.position = c(0.75, 0.96),
+  theme(legend.position = c(0.7, 0.96),
         legend.margin = margin(0, 0, 0, 0)) +
   guides(color = guide_legend(direction = 'horizontal'))
 
@@ -151,9 +153,9 @@ inset_map <- crop_box %>%
   lwgeom::st_split(inset_map) %>%
   # Separate into individual features
   st_collection_extract() %>%
-  # just so happens that features 5 (upper Potomac) and 2 (everything else) have
-  #   what we need
-  .[-c(2, 5),]
+  # just so happens that features 6 (upper Potomac) and 2 (everything else) are
+  #   redundant to what we need
+  .[-c(2, 6),]
 
 
 # Create data frame to hold labels
@@ -188,8 +190,8 @@ lower_inset <- lower + draw_plot(inset, -76, 38.399, 0.2, 0.149)
 
 
 
-agg_png('manuscript/figures/map3.png', res = 600,
-        width = 7.5, height = 3.65, scaling = .75, units = 'in')
+agg_tiff('manuscript/figures/map.tif', res = 600,
+        width = 7.5, height = 3.65, scaling = .75, units = 'in', compression = 'lzw')
 
 lower_inset + upper & theme(plot.margin = margin(0, 0, 0, 0))
 
